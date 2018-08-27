@@ -24,6 +24,7 @@ import (
 	"github.com/rancher/rancher/pkg/api/customization/roletemplate"
 	"github.com/rancher/rancher/pkg/api/customization/roletemplatebinding"
 	"github.com/rancher/rancher/pkg/api/customization/setting"
+	"github.com/rancher/rancher/pkg/api/customization/stats"
 	"github.com/rancher/rancher/pkg/api/store/cert"
 	"github.com/rancher/rancher/pkg/api/store/cluster"
 	nodeStore "github.com/rancher/rancher/pkg/api/store/node"
@@ -50,6 +51,8 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 	schemas := apiContext.Schemas
 
 	factory := &crd.Factory{ClientGetter: apiContext.ClientGetter}
+
+	stats.Register(apiContext, clusterManager)
 
 	factory.BatchCreateCRDs(ctx, config.ManagementStorageContext, schemas, &managementschema.Version,
 		client.AuthConfigType,
