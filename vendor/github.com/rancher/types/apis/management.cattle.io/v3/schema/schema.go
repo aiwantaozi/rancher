@@ -34,7 +34,8 @@ var (
 		Init(globalTypes).
 		Init(rkeTypes).
 		Init(alertTypes).
-		Init(composeType)
+		Init(composeType).
+		Init(alertPolicyTypes)
 
 	TokenSchemas = factory.Schemas(&Version).
 			Init(tokens)
@@ -539,6 +540,35 @@ func alertTypes(schema *types.Schemas) *types.Schemas {
 			}
 		})
 
+}
+
+func alertPolicyTypes(schema *types.Schemas) *types.Schemas {
+	return schema.
+		AddMapperForType(&Version, v3.ClusterAlertPolicy{},
+			&m.Embed{Field: "status"},
+			m.DisplayName{}).
+		AddMapperForType(&Version, v3.Metric{},
+			m.Enum{
+				Field:   "metricType",
+				Options: v3.MetricEnum,
+			}).
+		MustImportAndCustomize(&Version, v3.ClusterAlertPolicy{}, func(schema *types.Schema) {
+			schema.ResourceActions = map[string]types.Action{
+				"activate":   {},
+				"deactivate": {},
+				"mute":       {},
+				"unmute":     {},
+			}
+		}).
+		MustImportAndCustomize(&Version, v3.ProjectAlertPolicy{}, func(schema *types.Schema) {
+			schema.ResourceActions = map[string]types.Action{
+				"activate":   {},
+				"deactivate": {},
+				"mute":       {},
+				"unmute":     {},
+			}
+		}).
+		MustImport(&Version, v3.CommonPolicy{})
 }
 
 func composeType(schemas *types.Schemas) *types.Schemas {

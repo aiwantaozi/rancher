@@ -44,6 +44,8 @@ type Client struct {
 	ClusterAlert                            ClusterAlertOperations
 	ProjectAlert                            ProjectAlertOperations
 	ComposeConfig                           ComposeConfigOperations
+	ClusterAlertPolicy                      ClusterAlertPolicyOperations
+	ProjectAlertPolicy                      ProjectAlertPolicyOperations
 }
 
 func NewClient(opts *clientbase.ClientOpts) (*Client, error) {
@@ -93,6 +95,8 @@ func NewClient(opts *clientbase.ClientOpts) (*Client, error) {
 	client.ClusterAlert = newClusterAlertClient(client)
 	client.ProjectAlert = newProjectAlertClient(client)
 	client.ComposeConfig = newComposeConfigClient(client)
+	client.ClusterAlertPolicy = newClusterAlertPolicyClient(client)
+	client.ProjectAlertPolicy = newProjectAlertPolicyClient(client)
 
 	return client, nil
 }

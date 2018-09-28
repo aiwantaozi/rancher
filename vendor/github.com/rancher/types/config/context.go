@@ -17,6 +17,8 @@ import (
 	extv1beta1 "github.com/rancher/types/apis/extensions/v1beta1"
 	managementv3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	managementSchema "github.com/rancher/types/apis/management.cattle.io/v3/schema"
+	monitoringv1 "github.com/rancher/types/apis/monitoring.cattle.io/v1"
+	monitoringSchema "github.com/rancher/types/apis/monitoring.cattle.io/v1/schema"
 	knetworkingv1 "github.com/rancher/types/apis/networking.k8s.io/v1"
 	projectv3 "github.com/rancher/types/apis/project.cattle.io/v3"
 	projectSchema "github.com/rancher/types/apis/project.cattle.io/v3/schema"
@@ -133,7 +135,8 @@ func NewScaledContext(config rest.Config) (*ScaledContext, error) {
 	context.Schemas = types.NewSchemas().
 		AddSchemas(managementSchema.Schemas).
 		AddSchemas(clusterSchema.Schemas).
-		AddSchemas(projectSchema.Schemas)
+		AddSchemas(projectSchema.Schemas).
+		AddSchemas(monitoringSchema.Schemas)
 
 	return context, err
 }
@@ -190,6 +193,7 @@ type UserContext struct {
 	BatchV1      batchv1.Interface
 	BatchV1Beta1 batchv1beta1.Interface
 	Networking   knetworkingv1.Interface
+	Monitoring   monitoringv1.Interface
 }
 
 func (w *UserContext) controllers() []controller.Starter {
@@ -396,6 +400,11 @@ func NewUserContext(scaledContext *ScaledContext, config rest.Config, clusterNam
 	}
 
 	context.BatchV1Beta1, err = batchv1beta1.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	context.Monitoring, err = monitoringv1.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}

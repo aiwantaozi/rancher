@@ -38,6 +38,8 @@ const (
 	ClusterConditionAgentDeployed            condition.Cond = "AgentDeployed"
 	ClusterConditionGlobalAdminsSynced       condition.Cond = "GlobalAdminsSynced"
 	ClusterConditionInitialRolesPopulated    condition.Cond = "InitialRolesPopulated"
+	ClusterConditionAdditionalCRDCreated     condition.Cond = "AdditionalCRDCreated"
+	ClusterConditionMonitoringEnabled        condition.Cond = "MonitoringEnabled"
 
 	ClusterDriverImported = "imported"
 	ClusterDriverLocal    = "local"
@@ -71,6 +73,7 @@ type ClusterSpec struct {
 	DefaultClusterRoleForProjectMembers  string                               `json:"defaultClusterRoleForProjectMembers,omitempty" norman:"type=reference[roleTemplate]"`
 	DockerRootDir                        string                               `json:"dockerRootDir,omitempty" norman:"default=/var/lib/docker"`
 	EnableNetworkPolicy                  *bool                                `json:"enableNetworkPolicy" norman:"default=false"`
+	EnableClusterMonitoring              *bool                                `json:"enableClusterMonitoring" norman:"default=false"`
 }
 
 type ImportedConfig struct {
@@ -98,6 +101,7 @@ type ClusterStatus struct {
 	Version                              *version.Info            `json:"version,omitempty"`
 	AppliedPodSecurityPolicyTemplateName string                   `json:"appliedPodSecurityPolicyTemplateId"`
 	AppliedEnableNetworkPolicy           bool                     `json:"appliedEnableNetworkPolicy" norman:"nocreate,noupdate,default=false"`
+	MonitoringStatus                     *MonitoringStatus        `json:"monitoringStatus,omitempty" norman:"nocreate,noupdate"`
 }
 
 type ClusterComponentStatus struct {

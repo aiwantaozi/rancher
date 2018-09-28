@@ -5,6 +5,7 @@ import (
 
 	"github.com/rancher/norman/types"
 	m "github.com/rancher/norman/types/mapper"
+	monitoringv1schema "github.com/rancher/types/apis/monitoring.cattle.io/v1/schema"
 	"github.com/rancher/types/apis/project.cattle.io/v3"
 	"github.com/rancher/types/factory"
 	"github.com/rancher/types/mapper"
@@ -42,7 +43,8 @@ var (
 		Init(podTemplateSpecTypes).
 		Init(workloadTypes).
 		Init(appTypes).
-		Init(pipelineTypes)
+		Init(pipelineTypes).
+		Init(monitoringv1schema.Constructor(&Version, true))
 )
 
 func configMapTypes(schemas *types.Schemas) *types.Schemas {
