@@ -14,6 +14,7 @@ import (
 	"github.com/rancher/rancher/pkg/controllers/user/ingress"
 	"github.com/rancher/rancher/pkg/controllers/user/ingresshostgen"
 	"github.com/rancher/rancher/pkg/controllers/user/logging"
+	"github.com/rancher/rancher/pkg/controllers/user/monitoring"
 	"github.com/rancher/rancher/pkg/controllers/user/networkpolicy"
 	"github.com/rancher/rancher/pkg/controllers/user/noderemove"
 	"github.com/rancher/rancher/pkg/controllers/user/nodesyncer"
@@ -55,6 +56,9 @@ func Register(ctx context.Context, cluster *config.UserContext, kubeConfigGetter
 	endpoints.Register(ctx, cluster)
 	approuter.Register(ctx, cluster)
 	resourcequota.Register(ctx, cluster)
+	if err := monitoring.Register(ctx, cluster); err != nil {
+		return err
+	}
 
 	userOnlyContext := cluster.UserOnlyContext()
 	dnsrecord.Register(ctx, userOnlyContext)

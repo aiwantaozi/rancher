@@ -43,6 +43,7 @@ var (
 	UIPath                          = NewSetting("ui-path", "")
 	UIPL                            = NewSetting("ui-pl", "rancher")
 	WhitelistDomain                 = NewSetting("whitelist-domain", "forums.rancher.com")
+	SystemMonitoringCatalogID       = NewSetting("system-monitoring-catalog-id", "catalog://?catalog=library&template=prometheus-operator&version=latest")
 )
 
 type Provider interface {
