@@ -47,6 +47,11 @@ func Start(ctx context.Context, httpPort, httpsPort int, scaledContext *config.S
 		return err
 	}
 
+	monitoringAPI, err := managementapi.NewMonitoring(ctx, scaledContext)
+	if err != nil {
+		return err
+	}
+
 	root := mux.NewRouter()
 	root.UseEncodedPath()
 
@@ -58,6 +63,8 @@ func Start(ctx context.Context, httpPort, httpsPort int, scaledContext *config.S
 	if err != nil {
 		return err
 	}
+
+	monitoringAuthHandler, err := filter.NewAuthenticationFilter(ctx, scaledContext, auditLogWriter, newMonitoring(monitoringAPI))
 
 	webhookHandler := hooks.New(scaledContext)
 
@@ -74,6 +81,7 @@ func Start(ctx context.Context, httpPort, httpsPort int, scaledContext *config.S
 	root.Handle("/v3/settings/cacerts", rawAuthedAPIs).Methods(http.MethodGet)
 	root.Handle("/v3/settings/first-login", rawAuthedAPIs).Methods(http.MethodGet)
 	root.Handle("/v3/settings/ui-pl", rawAuthedAPIs).Methods(http.MethodGet)
+	root.PathPrefix("/v1").Handler(monitoringAuthHandler)
 	root.PathPrefix("/v3").Handler(authedHandler)
 	root.PathPrefix("/hooks").Handler(webhookHandler)
 	root.PathPrefix("/k8s/clusters/").Handler(authedHandler)
@@ -95,6 +103,13 @@ func Start(ctx context.Context, httpPort, httpsPort int, scaledContext *config.S
 
 	dynamiclistener.Start(ctx, scaledContext, httpPort, httpsPort, root)
 	return nil
+}
+
+func newMonitoring(monitoringAPI http.Handler) *mux.Router {
+	monitoring := mux.NewRouter()
+	monitoring.UseEncodedPath()
+	monitoring.PathPrefix("/v1").Handler(monitoringAPI)
+	return monitoring
 }
 
 func newAuthed(tokenAPI http.Handler, managementAPI http.Handler, k8sproxy http.Handler) *mux.Router {

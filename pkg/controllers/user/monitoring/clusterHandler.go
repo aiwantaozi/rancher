@@ -8,6 +8,7 @@ import (
 
 	"github.com/juju/errors"
 	"github.com/rancher/rancher/pkg/controllers/user/helm/common"
+	"github.com/rancher/rancher/pkg/monitoring"
 	"github.com/rancher/rancher/pkg/project"
 	"github.com/rancher/rancher/pkg/ref"
 	"github.com/rancher/rancher/pkg/settings"
@@ -19,11 +20,6 @@ import (
 	k8scorev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-const (
-	SystemMonitoringAppName       = "system-monitoring"
-	SystemMonitoringNamespaceName = "cattle-prometheus"
 )
 
 const (
@@ -204,17 +200,17 @@ func (ah *appHandler) deploySystemMonitoring(clusterTag string, cluster *mgmtv3.
 
 	// check system monitoring app
 	systemMonitoringApps, err := ah.appsGetter.Apps(metav1.NamespaceAll).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", cattleMonitoringAppNameLabelKey, SystemMonitoringAppName),
+		LabelSelector: fmt.Sprintf("%s=%s", cattleMonitoringAppNameLabelKey, monitoring.SystemMonitoringAppName),
 	})
 	if err != nil && !k8serrors.IsNotFound(err) {
-		return errors.Annotatef(err, "failed to find %q app of cluster %s", SystemMonitoringAppName, clusterTag)
+		return errors.Annotatef(err, "failed to find %q app of cluster %s", monitoring.SystemMonitoringAppName, clusterTag)
 	}
 
 	systemMonitoringApps = systemMonitoringApps.DeepCopy()
 	for _, app := range systemMonitoringApps.Items {
-		if app.Name == SystemMonitoringAppName {
+		if app.Name == monitoring.SystemMonitoringAppName {
 			if app.DeletionTimestamp != nil {
-				return errors.Annotatef(err, "stale %q app of cluster %s is still on terminating", SystemMonitoringAppName, clusterTag)
+				return errors.Annotatef(err, "stale %q app of cluster %s is still on terminating", monitoring.SystemMonitoringAppName, clusterTag)
 			}
 
 			return nil
@@ -224,16 +220,16 @@ func (ah *appHandler) deploySystemMonitoring(clusterTag string, cluster *mgmtv3.
 	// check monitoring namespace
 	namespace := &k8scorev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: SystemMonitoringNamespaceName,
+			Name: monitoring.SystemMonitoringNamespaceName,
 		},
 	}
 	if _, err := ah.namespaceClient.Create(namespace); err != nil && !k8serrors.IsAlreadyExists(err) {
-		return errors.Annotatef(err, "failed to create %q namespace for cluster %s", SystemMonitoringNamespaceName, clusterTag)
+		return errors.Annotatef(err, "failed to create %q namespace for cluster %s", monitoring.SystemMonitoringNamespaceName, clusterTag)
 	}
 
-	deployNamespace, err := ah.namespaceClient.Get(SystemMonitoringNamespaceName, metav1.GetOptions{})
+	deployNamespace, err := ah.namespaceClient.Get(monitoring.SystemMonitoringNamespaceName, metav1.GetOptions{})
 	if err != nil {
-		return errors.Annotatef(err, "failed to find %q namespace of cluster %s", SystemMonitoringNamespaceName, clusterTag)
+		return errors.Annotatef(err, "failed to find %q namespace of cluster %s", monitoring.SystemMonitoringNamespaceName, clusterTag)
 	}
 	deployNamespace = deployNamespace.DeepCopy()
 
@@ -264,7 +260,7 @@ func (ah *appHandler) deploySystemMonitoring(clusterTag string, cluster *mgmtv3.
 		deployNamespace.Annotations[cattleProjectIDAnnotationKey] = deployProjectName
 		_, err := ah.namespaceClient.Update(deployNamespace)
 		if err != nil {
-			return errors.Annotatef(err, "failed to move namespace %s to project %s", SystemMonitoringNamespaceName, deployProject.Spec.DisplayName)
+			return errors.Annotatef(err, "failed to move namespace %s to project %s", monitoring.SystemMonitoringNamespaceName, deployProject.Spec.DisplayName)
 		}
 	}
 
@@ -286,15 +282,15 @@ func (ah *appHandler) deploySystemMonitoring(clusterTag string, cluster *mgmtv3.
 				cattleCreatorIDAnnotationKey: clusterCreatorID,
 			},
 			Labels: map[string]string{
-				cattleMonitoringAppNameLabelKey: SystemMonitoringAppName,
+				cattleMonitoringAppNameLabelKey: monitoring.SystemMonitoringAppName,
 			},
-			Name:      SystemMonitoringAppName,
+			Name:      monitoring.SystemMonitoringAppName,
 			Namespace: projectID,
 		},
 		Spec: projectv3.AppSpec{
 			Answers: map[string]string{
-				"apiGroup":             monitoringv1.GroupName,
-				"alertmanager.enabled": "false",
+				"apiGroup":                                          monitoringv1.GroupName,
+				"alertmanager.enabled":                              "false",
 				"alertmanager.enabledDefaultPrometheusRules":        "false",
 				"alertmanager.apiGroup":                             monitoringv1.GroupName,
 				"alertmanager.ingress.enabled":                      "false",
@@ -327,16 +323,20 @@ func (ah *appHandler) deploySystemMonitoring(clusterTag string, cluster *mgmtv3.
 				"prometheus.persistence.enabled":                    "false",
 				"prometheus.persistence.size":                       "10Gi",
 				"prometheus.persistence.storageClass":               "",
+				"prometheus.alertingEndpoints[0].name":              "alertmanager",
+				"prometheus.alertingEndpoints[0].namespace":         monitoring.SystemMonitoringNamespaceName,
+				"prometheus.alertingEndpoints[0].port":              "alertmanager",
+				"prometheus.rulesSelector.matchLabels[0].source":    "rancher-alert",
 			},
 			Description:     "System Monitoring",
 			ExternalID:      catalogID,
 			ProjectName:     deployProjectName,
-			TargetNamespace: SystemMonitoringNamespaceName,
+			TargetNamespace: monitoring.SystemMonitoringNamespaceName,
 		},
 	}
 
 	if _, err := ah.appsGetter.Apps(projectID).Create(app); err != nil && !k8serrors.IsAlreadyExists(err) {
-		return errors.Annotatef(err, "failed to create %q app for cluster %s", SystemMonitoringAppName, clusterTag)
+		return errors.Annotatef(err, "failed to create %q app for cluster %s", monitoring.SystemMonitoringAppName, clusterTag)
 	}
 
 	return nil
@@ -345,17 +345,17 @@ func (ah *appHandler) deploySystemMonitoring(clusterTag string, cluster *mgmtv3.
 func (ah *appHandler) withdrawSystemMonitoring(clusterTag string, cluster *mgmtv3.Cluster) error {
 	// check system monitoring app
 	systemMonitoringApps, err := ah.appsGetter.Apps(metav1.NamespaceAll).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", cattleMonitoringAppNameLabelKey, SystemMonitoringAppName),
+		LabelSelector: fmt.Sprintf("%s=%s", cattleMonitoringAppNameLabelKey, monitoring.SystemMonitoringAppName),
 	})
 	if err != nil && !k8serrors.IsNotFound(err) {
-		return errors.Annotatef(err, "failed to find %q app of cluster %s", SystemMonitoringAppName, clusterTag)
+		return errors.Annotatef(err, "failed to find %q app of cluster %s", monitoring.SystemMonitoringAppName, clusterTag)
 	}
 
 	systemMonitoringApps = systemMonitoringApps.DeepCopy()
 	for _, app := range systemMonitoringApps.Items {
-		if app.Name == SystemMonitoringAppName && app.DeletionTimestamp == nil {
-			if err := ah.appsGetter.Apps(app.Namespace).Delete(SystemMonitoringAppName, &metav1.DeleteOptions{}); err != nil {
-				return errors.Annotatef(err, "failed to remove %q app of cluster %s", SystemMonitoringAppName, clusterTag)
+		if app.Name == monitoring.SystemMonitoringAppName && app.DeletionTimestamp == nil {
+			if err := ah.appsGetter.Apps(app.Namespace).Delete(monitoring.SystemMonitoringAppName, &metav1.DeleteOptions{}); err != nil {
+				return errors.Annotatef(err, "failed to remove %q app of cluster %s", monitoring.SystemMonitoringAppName, clusterTag)
 			}
 
 			return nil

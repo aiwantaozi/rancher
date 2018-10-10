@@ -17,6 +17,7 @@ import (
 	"github.com/rancher/rancher/pkg/clustermanager"
 	clusterSchema "github.com/rancher/types/apis/cluster.cattle.io/v3/schema"
 	managementSchema "github.com/rancher/types/apis/management.cattle.io/v3/schema"
+	monitoringSchema "github.com/rancher/types/apis/monitoring.cattle.io/v1/schema"
 	projectSchema "github.com/rancher/types/apis/project.cattle.io/v3/schema"
 	"github.com/rancher/types/config"
 )
@@ -50,4 +51,16 @@ func New(ctx context.Context, scaledContext *config.ScaledContext, clusterManage
 	err := settings.Register(scaledContext)
 
 	return server, err
+}
+
+func NewMonitoring(ctx context.Context, scaledContext *config.ScaledContext) (http.Handler, error) {
+	managementstored.SetupMonitoring(ctx, scaledContext)
+
+	server := normanapi.NewAPIServer()
+	server.AccessControl = scaledContext.AccessControl
+
+	if err := server.AddSchemas(monitoringSchema.Schemas); err != nil {
+		return nil, err
+	}
+	return server, nil
 }

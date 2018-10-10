@@ -9,6 +9,7 @@ import (
 	"github.com/rancher/norman/store/subtype"
 	"github.com/rancher/norman/types"
 	"github.com/rancher/rancher/pkg/api/customization/alert"
+	"github.com/rancher/rancher/pkg/api/customization/alertpolicy"
 	"github.com/rancher/rancher/pkg/api/customization/app"
 	"github.com/rancher/rancher/pkg/api/customization/authn"
 	"github.com/rancher/rancher/pkg/api/customization/catalog"
@@ -40,11 +41,26 @@ import (
 	"github.com/rancher/rancher/pkg/nodeconfig"
 	sourcecodeproviders "github.com/rancher/rancher/pkg/pipeline/providers"
 	managementschema "github.com/rancher/types/apis/management.cattle.io/v3/schema"
+	monitoringschema "github.com/rancher/types/apis/monitoring.cattle.io/v1/schema"
 	projectschema "github.com/rancher/types/apis/project.cattle.io/v3/schema"
 	"github.com/rancher/types/client/management/v3"
+	monitoringclient "github.com/rancher/types/client/monitoring/v1"
 	projectclient "github.com/rancher/types/client/project/v3"
 	"github.com/rancher/types/config"
 )
+
+func SetupMonitoring(ctx context.Context, apiContext *config.ScaledContext) {
+	schemas := monitoringschema.Schemas
+
+	factory := &crd.Factory{ClientGetter: apiContext.ClientGetter}
+	factory.BatchCreateCRDs(ctx, config.ManagementStorageContext, schemas, &monitoringschema.Version,
+		monitoringclient.PrometheusType,
+		monitoringclient.PrometheusRuleType,
+		monitoringclient.ServiceMonitorType,
+		monitoringclient.AlertmanagerType,
+	)
+	factory.BatchWait()
+}
 
 func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager *clustermanager.Manager,
 	k8sProxy http.Handler) error {
@@ -54,13 +70,13 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 	stats.Register(apiContext, clusterManager)
 
 	factory := &crd.Factory{ClientGetter: apiContext.ClientGetter}
-
 	factory.BatchCreateCRDs(ctx, config.ManagementStorageContext, schemas, &managementschema.Version,
 		client.AuthConfigType,
 		client.CatalogType,
 		client.ClusterAlertType,
 		client.ClusterEventType,
 		client.ClusterLoggingType,
+		client.ClusterAlertPolicyType,
 		client.ClusterRegistrationTokenType,
 		client.ClusterRoleTemplateBindingType,
 		client.ClusterType,
@@ -81,6 +97,7 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 		client.PreferenceType,
 		client.ProjectAlertType,
 		client.ProjectLoggingType,
+		client.ProjectAlertPolicyType,
 		client.ProjectNetworkPolicyType,
 		client.ProjectRoleTemplateBindingType,
 		client.ProjectType,
@@ -103,7 +120,6 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 		projectclient.SourceCodeProviderConfigType,
 		projectclient.SourceCodeRepositoryType,
 	)
-
 	factory.BatchWait()
 
 	Clusters(schemas, apiContext, clusterManager, k8sProxy)
@@ -120,6 +136,7 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 	NodeTemplates(schemas, apiContext)
 	LoggingTypes(schemas)
 	Alert(schemas, apiContext)
+	AlertPolicy(schemas, apiContext)
 	Pipeline(schemas, apiContext, clusterManager)
 	Project(schemas, apiContext)
 	ProjectRoleTemplateBinding(schemas, apiContext)
@@ -357,6 +374,29 @@ func Alert(schemas *types.Schemas, management *config.ScaledContext) {
 	schema.CollectionFormatter = alert.NotifierCollectionFormatter
 	schema.Formatter = alert.NotifierFormatter
 	schema.ActionHandler = handler.NotifierActionHandler
+}
+
+func AlertPolicy(schemas *types.Schemas, management *config.ScaledContext) {
+	handler := &alertpolicy.Handler{
+		ProjectAlertPolicies: management.Management.ProjectAlertPolicies(""),
+		ClusterAlertPolicies: management.Management.ClusterAlertPolicies(""),
+		Notifiers:            management.Management.Notifiers(""),
+	}
+
+	schema := schemas.Schema(&managementschema.Version, client.ClusterAlertPolicyType)
+	schema.Formatter = alert.Formatter
+	schema.ActionHandler = handler.ClusterActionHandler
+	schema.Validator = alertpolicy.ClusterAlertPolicyValidator
+
+	schema = schemas.Schema(&managementschema.Version, client.ProjectAlertPolicyType)
+	schema.Formatter = alert.Formatter
+	schema.ActionHandler = handler.ProjectActionHandler
+	schema.Validator = alertpolicy.ProjectAlertPolicyValidator
+
+	// schema = schemas.Schema(&managementschema.Version, client.NotifierType)
+	// schema.CollectionFormatter = alert.NotifierCollectionFormatter
+	// schema.Formatter = alert.NotifierFormatter
+	// schema.ActionHandler = handler.NotifierActionHandler
 }
 
 func Pipeline(schemas *types.Schemas, management *config.ScaledContext, clusterManager *clustermanager.Manager) {

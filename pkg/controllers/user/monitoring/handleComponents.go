@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/juju/errors"
+	"github.com/rancher/rancher/pkg/monitoring"
 	mgmtv3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +22,7 @@ var (
 
 func (ch *clusterHandler) isGrafanaDeployed(monitoringStatus *mgmtv3.MonitoringStatus, clusterName string) error {
 	_, err := ConditionGrafanaDeployed.DoUntilTrue(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
-		obj, err := ch.workloadsClient.Deployments(SystemMonitoringNamespaceName).Get("grafana-"+SystemMonitoringAppName, metav1.GetOptions{})
+		obj, err := ch.workloadsClient.Deployments(monitoring.SystemMonitoringNamespaceName).Get("grafana-"+monitoring.SystemMonitoringAppName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return nil, errors.New("Grafana Deployment isn't deployed")
@@ -35,7 +36,7 @@ func (ch *clusterHandler) isGrafanaDeployed(monitoringStatus *mgmtv3.MonitoringS
 			return nil, errors.New("Grafana Deployment is deploying")
 		}
 
-		monitoringStatus.GrafanaEndpoint = fmt.Sprintf("/k8s/clusters/%s/api/v1/namespaces/%s/services/http:grafana-nginx-%s:80/proxy/", clusterName, SystemMonitoringNamespaceName, SystemMonitoringAppName)
+		monitoringStatus.GrafanaEndpoint = fmt.Sprintf("/k8s/clusters/%s/api/v1/namespaces/%s/services/http:grafana-nginx-%s:80/proxy/", clusterName, monitoring.SystemMonitoringNamespaceName, monitoring.SystemMonitoringAppName)
 
 		return monitoringStatus, nil
 	})
@@ -45,7 +46,7 @@ func (ch *clusterHandler) isGrafanaDeployed(monitoringStatus *mgmtv3.MonitoringS
 
 func (ch *clusterHandler) isGrafanaWithdrew(monitoringStatus *mgmtv3.MonitoringStatus) error {
 	_, err := ConditionGrafanaDeployed.DoUntilFalse(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
-		_, err := ch.workloadsClient.Deployments(SystemMonitoringNamespaceName).Get("grafana-"+SystemMonitoringAppName, metav1.GetOptions{})
+		_, err := ch.workloadsClient.Deployments(monitoring.SystemMonitoringNamespaceName).Get("grafana-"+monitoring.SystemMonitoringAppName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				monitoringStatus.GrafanaEndpoint = ""
@@ -63,7 +64,7 @@ func (ch *clusterHandler) isGrafanaWithdrew(monitoringStatus *mgmtv3.MonitoringS
 
 func (ch *clusterHandler) isNodeExporterDeployed(monitoringStatus *mgmtv3.MonitoringStatus) error {
 	_, err := ConditionNodeExporterDeployed.DoUntilTrue(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
-		obj, err := ch.workloadsClient.DaemonSets(SystemMonitoringNamespaceName).Get("exporter-node-"+SystemMonitoringAppName, metav1.GetOptions{})
+		obj, err := ch.workloadsClient.DaemonSets(monitoring.SystemMonitoringNamespaceName).Get("exporter-node-"+monitoring.SystemMonitoringAppName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return nil, errors.New("Node Exporter DaemonSet isn't deployed")
@@ -84,7 +85,7 @@ func (ch *clusterHandler) isNodeExporterDeployed(monitoringStatus *mgmtv3.Monito
 
 func (ch *clusterHandler) isNodeExporterWithdrew(monitoringStatus *mgmtv3.MonitoringStatus) error {
 	_, err := ConditionNodeExporterDeployed.DoUntilFalse(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
-		_, err := ch.workloadsClient.DaemonSets(SystemMonitoringNamespaceName).Get("exporter-node-"+SystemMonitoringAppName, metav1.GetOptions{})
+		_, err := ch.workloadsClient.DaemonSets(monitoring.SystemMonitoringNamespaceName).Get("exporter-node-"+monitoring.SystemMonitoringAppName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return monitoringStatus, nil
@@ -101,7 +102,7 @@ func (ch *clusterHandler) isNodeExporterWithdrew(monitoringStatus *mgmtv3.Monito
 
 func (ch *clusterHandler) isKubeStateExporterDeployed(monitoringStatus *mgmtv3.MonitoringStatus) error {
 	_, err := ConditionKubeStateExporterDeployed.DoUntilTrue(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
-		obj, err := ch.workloadsClient.Deployments(SystemMonitoringNamespaceName).Get("exporter-kube-state-"+SystemMonitoringAppName, metav1.GetOptions{})
+		obj, err := ch.workloadsClient.Deployments(monitoring.SystemMonitoringNamespaceName).Get("exporter-kube-state-"+monitoring.SystemMonitoringAppName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return nil, errors.New("Kube State Exporter Deployment isn't deployed")
@@ -123,7 +124,7 @@ func (ch *clusterHandler) isKubeStateExporterDeployed(monitoringStatus *mgmtv3.M
 
 func (ch *clusterHandler) isKubeStateExporterWithdrew(monitoringStatus *mgmtv3.MonitoringStatus) error {
 	_, err := ConditionKubeStateExporterDeployed.DoUntilFalse(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
-		_, err := ch.workloadsClient.Deployments(SystemMonitoringNamespaceName).Get("exporter-kube-state-"+SystemMonitoringAppName, metav1.GetOptions{})
+		_, err := ch.workloadsClient.Deployments(monitoring.SystemMonitoringNamespaceName).Get("exporter-kube-state-"+monitoring.SystemMonitoringAppName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return monitoringStatus, nil
@@ -140,7 +141,7 @@ func (ch *clusterHandler) isKubeStateExporterWithdrew(monitoringStatus *mgmtv3.M
 
 func (ch *clusterHandler) isOperatorDeployed(monitoringStatus *mgmtv3.MonitoringStatus) error {
 	_, err := ConditionOperatorDeployed.DoUntilTrue(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
-		obj, err := ch.workloadsClient.Deployments(SystemMonitoringNamespaceName).Get("prometheus-operator-"+SystemMonitoringAppName, metav1.GetOptions{})
+		obj, err := ch.workloadsClient.Deployments(monitoring.SystemMonitoringNamespaceName).Get("prometheus-operator-"+monitoring.SystemMonitoringAppName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return nil, errors.New("Prometheus Operator Deployment isn't deployed")
@@ -162,7 +163,7 @@ func (ch *clusterHandler) isOperatorDeployed(monitoringStatus *mgmtv3.Monitoring
 
 func (ch *clusterHandler) isOperatorWithdrew(monitoringStatus *mgmtv3.MonitoringStatus) error {
 	_, err := ConditionOperatorDeployed.DoUntilFalse(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
-		_, err := ch.workloadsClient.Deployments(SystemMonitoringNamespaceName).Get("prometheus-operator-"+SystemMonitoringAppName, metav1.GetOptions{})
+		_, err := ch.workloadsClient.Deployments(monitoring.SystemMonitoringNamespaceName).Get("prometheus-operator-"+monitoring.SystemMonitoringAppName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return monitoringStatus, nil
@@ -179,7 +180,7 @@ func (ch *clusterHandler) isOperatorWithdrew(monitoringStatus *mgmtv3.Monitoring
 
 func (ch *clusterHandler) isPrometheusDeployed(monitoringStatus *mgmtv3.MonitoringStatus) error {
 	_, err := ConditionPrometheusDeployed.DoUntilTrue(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
-		obj, err := ch.workloadsClient.StatefulSets(SystemMonitoringNamespaceName).Get("prometheus-"+SystemMonitoringAppName, metav1.GetOptions{})
+		obj, err := ch.workloadsClient.StatefulSets(monitoring.SystemMonitoringNamespaceName).Get("prometheus-"+monitoring.SystemMonitoringAppName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return nil, errors.New("Prometheus StatefulSet isn't deployed")
@@ -200,7 +201,7 @@ func (ch *clusterHandler) isPrometheusDeployed(monitoringStatus *mgmtv3.Monitori
 
 func (ch *clusterHandler) isPrometheusWithdrew(monitoringStatus *mgmtv3.MonitoringStatus) error {
 	_, err := ConditionPrometheusDeployed.DoUntilFalse(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
-		_, err := ch.workloadsClient.StatefulSets(SystemMonitoringNamespaceName).Get("prometheus-"+SystemMonitoringAppName, metav1.GetOptions{})
+		_, err := ch.workloadsClient.StatefulSets(monitoring.SystemMonitoringNamespaceName).Get("prometheus-"+monitoring.SystemMonitoringAppName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return monitoringStatus, nil
@@ -217,7 +218,7 @@ func (ch *clusterHandler) isPrometheusWithdrew(monitoringStatus *mgmtv3.Monitori
 
 func (ch *clusterHandler) isAlertmanagerDeployed(monitoringStatus *mgmtv3.MonitoringStatus) error {
 	_, err := ConditionAlertmanagerDeployed.DoUntilTrue(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
-		obj, err := ch.workloadsClient.StatefulSets(SystemMonitoringNamespaceName).Get("alertmanager-"+SystemMonitoringAppName, metav1.GetOptions{})
+		obj, err := ch.workloadsClient.StatefulSets(monitoring.SystemMonitoringNamespaceName).Get("alertmanager-"+monitoring.SystemMonitoringAppName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return nil, errors.New("Alertmanager StatefulSet isn't deployed")
@@ -238,7 +239,7 @@ func (ch *clusterHandler) isAlertmanagerDeployed(monitoringStatus *mgmtv3.Monito
 
 func (ch *clusterHandler) isAlertmanagerWithdrew(monitoringStatus *mgmtv3.MonitoringStatus) error {
 	_, err := ConditionAlertmanagerDeployed.DoUntilFalse(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
-		_, err := ch.workloadsClient.StatefulSets(SystemMonitoringNamespaceName).Get("alertmanager-"+SystemMonitoringAppName, metav1.GetOptions{})
+		_, err := ch.workloadsClient.StatefulSets(monitoring.SystemMonitoringNamespaceName).Get("alertmanager-"+monitoring.SystemMonitoringAppName, metav1.GetOptions{})
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return monitoringStatus, nil
