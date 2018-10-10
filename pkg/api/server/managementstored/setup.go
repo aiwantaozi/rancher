@@ -24,6 +24,7 @@ import (
 	"github.com/rancher/rancher/pkg/api/customization/roletemplate"
 	"github.com/rancher/rancher/pkg/api/customization/roletemplatebinding"
 	"github.com/rancher/rancher/pkg/api/customization/setting"
+	"github.com/rancher/rancher/pkg/api/customization/stats"
 	"github.com/rancher/rancher/pkg/api/store/cert"
 	"github.com/rancher/rancher/pkg/api/store/cluster"
 	nodeStore "github.com/rancher/rancher/pkg/api/store/node"
@@ -49,6 +50,8 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 	k8sProxy http.Handler) error {
 	// Here we setup all types that will be stored in the Management cluster
 	schemas := apiContext.Schemas
+
+	stats.Register(apiContext, clusterManager)
 
 	factory := &crd.Factory{ClientGetter: apiContext.ClientGetter}
 
