@@ -83,7 +83,6 @@ type TargetPod struct {
 
 type TargetEvent struct {
 	CommentField
-	RuleID       string `json:"ruleID,omitempty" norman:"required"`
 	EventType    string `json:"eventType,omitempty" norman:"required,options=Normal|Warning,default=Warning"`
 	ResourceKind string `json:"resourceKind,omitempty" norman:"required,options=Pod|Node|Deployment|StatefulSet|DaemonSet"`
 }
@@ -97,7 +96,6 @@ type TargetWorkload struct {
 
 type TargetSystemService struct {
 	CommentField
-	RuleID    string `json:"ruleID,omitempty" norman:"required"`
 	Condition string `json:"condition,omitempty" norman:"required,options=etcd|controller-manager|scheduler,default=scheduler"`
 }
 

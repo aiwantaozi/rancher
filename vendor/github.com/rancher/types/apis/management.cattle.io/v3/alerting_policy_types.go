@@ -55,6 +55,7 @@ type CommonPolicy struct {
 }
 
 type CommentField struct {
+	RuleID   string `json:"ruleID,omitempty"`
 	Severity string `json:"severity,omitempty" norman:"required,options=info|critical|warning,default=critical"`
 }
 

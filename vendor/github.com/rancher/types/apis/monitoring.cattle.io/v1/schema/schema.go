@@ -53,7 +53,7 @@ func Constructor(version *types.APIVersion, withoutController bool) func(schemas
 			).
 			MustImportAndCustomize(version, monitoringv1.Prometheus{}, func(schema *types.Schema) {
 				if withoutController {
-					schema.PkgName = "/vendor/"
+					schema.ControllerExcluded = true
 				}
 				schema.MustCustomizeField("name", func(field types.Field) types.Field {
 					field.Type = "dnsLabelRestricted"
@@ -66,17 +66,17 @@ func Constructor(version *types.APIVersion, withoutController bool) func(schemas
 			}{}).
 			MustImportAndCustomize(version, monitoringv1.PrometheusRule{}, func(schema *types.Schema) {
 				if withoutController {
-					schema.PkgName = "/vendor/"
+					schema.ControllerExcluded = true
 				}
 			}, projectOverride{}).
 			MustImportAndCustomize(version, monitoringv1.Alertmanager{}, func(schema *types.Schema) {
 				if withoutController {
-					schema.PkgName = "/vendor/"
+					schema.ControllerExcluded = true
 				}
 			}, projectOverride{}).
 			MustImportAndCustomize(version, monitoringv1.ServiceMonitor{}, func(schema *types.Schema) {
 				if withoutController {
-					schema.PkgName = "/vendor/"
+					schema.ControllerExcluded = true
 				}
 			}, projectOverride{})
 	}

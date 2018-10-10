@@ -7,6 +7,7 @@ const (
 	MetricFieldMetricType         = "metricType"
 	MetricFieldName               = "name"
 	MetricFieldNameSelector       = "nameSelector"
+	MetricFieldRuleID             = "ruleID"
 	MetricFieldSeverity           = "severity"
 )
 
@@ -16,5 +17,6 @@ type Metric struct {
 	MetricType         string              `json:"metricType,omitempty" yaml:"metricType,omitempty"`
 	Name               string              `json:"name,omitempty" yaml:"name,omitempty"`
 	NameSelector       string              `json:"nameSelector,omitempty" yaml:"nameSelector,omitempty"`
+	RuleID             string              `json:"ruleID,omitempty" yaml:"ruleID,omitempty"`
 	Severity           string              `json:"severity,omitempty" yaml:"severity,omitempty"`
 }
