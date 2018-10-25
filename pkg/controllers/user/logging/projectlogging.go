@@ -21,6 +21,7 @@ import (
 	loggingconfig "github.com/rancher/rancher/pkg/controllers/user/logging/config"
 	"github.com/rancher/rancher/pkg/controllers/user/logging/generator"
 	"github.com/rancher/rancher/pkg/controllers/user/logging/utils"
+	projectutil "github.com/rancher/rancher/pkg/project"
 	"github.com/rancher/rancher/pkg/ticker"
 )
 
@@ -38,6 +39,7 @@ type ProjectLoggingSyncer struct {
 	clusterLoggingLister v3.ClusterLoggingLister
 	daemonsets           v1beta2.DaemonSetInterface
 	namespaces           v1.NamespaceInterface
+	projectLister        v3.ProjectLister
 	projectLoggings      v3.ProjectLoggingInterface
 	secrets              v1.SecretInterface
 	serviceAccounts      v1.ServiceAccountInterface
@@ -56,6 +58,7 @@ func registerProjectLogging(ctx context.Context, cluster *config.UserContext) {
 		clusterLoggingLister: cluster.Management.Management.ClusterLoggings("").Controller().Lister(),
 		daemonsets:           cluster.Apps.DaemonSets(loggingconfig.LoggingNamespace),
 		namespaces:           cluster.Core.Namespaces(""),
+		projectLister:        cluster.Management.Management.Projects(cluster.ClusterName).Controller().Lister(),
 		projectLoggings:      projectLoggings,
 		secrets:              cluster.Core.Secrets(loggingconfig.LoggingNamespace),
 		serviceAccounts:      cluster.Core.ServiceAccounts(loggingconfig.LoggingNamespace),
@@ -173,9 +176,13 @@ func (c *ProjectLoggingSyncer) createOrUpdateProjectConfig(excludeName string) e
 					grepNamespace = append(grepNamespace, v2.Name)
 				}
 			}
-
+			project, err := c.projectLister.Get(c.clusterName, v.Spec.ProjectName)
+			if err != nil {
+				return fmt.Errorf("get system project %s failed", err)
+			}
 			formatgrepNamespace := fmt.Sprintf("(%s)", strings.Join(grepNamespace, "|"))
-			projectLogging, err := utils.ToWrapProjectLogging(formatgrepNamespace, v.Spec)
+			isSystemProject := project.Spec.DisplayName == projectutil.System
+			projectLogging, err := utils.ToWrapProjectLogging(formatgrepNamespace, isSystemProject, v.Spec)
 			if err != nil {
 				return err
 			}

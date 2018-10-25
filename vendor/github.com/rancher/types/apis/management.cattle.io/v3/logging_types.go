@@ -50,6 +50,7 @@ type LoggingCommonSpec struct {
 }
 
 type ClusterLoggingSpec struct {
+	IncludeSystemComponent bool `json:"includeSystemComponent,omitempty"`
 	LoggingCommonSpec
 	ClusterName string `json:"clusterName" norman:"type=reference[cluster]"`
 }
@@ -101,6 +102,7 @@ type ElasticsearchConfig struct {
 	ClientKey     string `json:"clientKey,omitempty"`
 	ClientKeyPass string `json:"clientKeyPass,omitempty"`
 	SSLVerify     bool   `json:"sslVerify,omitempty"`
+	SSLVersion    string `json:"sslVersion,omitempty" norman:"type=enum,options=SSLv23|TLSv1|TLSv1_1|TLSv1_2,default=TLSv1_2"`
 }
 
 type SplunkConfig struct {
@@ -160,4 +162,9 @@ type LoggingSystemImages struct {
 	Kibana                        string `json:"kibana,omitempty"`
 	Busybox                       string `json:"busybox,omitempty"`
 	LogAggregatorFlexVolumeDriver string `json:"logAggregatorFlexVolumeDriver,omitempty"`
+}
+
+type LoggingInput struct {
+	Endpoints []string `json:"endpoint,omitempty" norman:"required"`
+	Protocol  string   `json:"protocol,omitempty" norman:"default=udp,type=enum,options=udp|tcp"`
 }

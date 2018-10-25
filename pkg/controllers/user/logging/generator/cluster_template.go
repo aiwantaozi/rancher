@@ -2,6 +2,7 @@ package generator
 
 var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
 
+{{ if .clusterTarget.IncludeSystemComponent }}
 <source>
   @type  tail
   path  /var/lib/rancher/rke/log/*.log
@@ -23,6 +24,7 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
     container_id ${tag_suffix[6].split(".")[0]}
   </record>
 </filter>
+{{end -}}
 
 <source>
    @type  tail
@@ -51,9 +53,17 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
   </record>
 </filter>
 
+<filter cluster.**>
+  @type grep
+  <exclude>
+    key namespace
+    pattern {{.clusterTarget.ExcludeNamespace}}
+  </exclude>
+</filter>
+
 {{ if eq .clusterTarget.CurrentTarget "syslog"}}
 {{ if .clusterTarget.SyslogConfig.Token}}
-<filter  cluster.** rke.** cluster-custom.**>
+<filter  cluster.** cluster-custom.** {{ if .clusterTarget.IncludeSystemComponent }}rke.**{{end -}} >
   @type record_transformer
   <record>
     tag ${tag} {{.clusterTarget.SyslogConfig.Token}}
@@ -62,7 +72,7 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
 {{end -}}
 {{end -}}
 
-<match  cluster.** rke.** cluster-custom.**> 
+<match  cluster.** cluster-custom.** {{ if .clusterTarget.IncludeSystemComponent }}rke.**{{end -}} > 
     {{ if eq .clusterTarget.CurrentTarget "embedded"}}
     @type elasticsearch
     include_tag_key  true

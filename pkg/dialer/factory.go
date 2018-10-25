@@ -133,10 +133,10 @@ func (f *Factory) clusterDialer(clusterName, address string) (dialer.Dialer, err
 	}
 
 	hostPort := hostPort(cluster)
-	if address == hostPort && isCloudDriver(cluster) {
-		// For cloud drivers we just connect directly to the k8s API, not through the tunnel.  All other go through tunnel
-		return native()
-	}
+	// if address == hostPort && isCloudDriver(cluster) {
+	// 	// For cloud drivers we just connect directly to the k8s API, not through the tunnel.  All other go through tunnel
+	// 	return native()
+	// }
 
 	if f.TunnelServer.HasSession(cluster.Name) {
 		cd := f.TunnelServer.Dialer(cluster.Name, 15*time.Second)

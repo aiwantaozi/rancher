@@ -1,47 +1,55 @@
 package logging
 
 import (
-	"fmt"
-
-	"github.com/rancher/norman/httperror"
-	"github.com/rancher/norman/types"
-	"github.com/rancher/norman/types/convert"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
-	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/rancher/pkg/controllers/user/logging/utils"
+	"github.com/rancher/types/config/dialer"
 )
 
-func ClusterLoggingValidator(resquest *types.APIContext, schema *types.Schema, data map[string]interface{}) error {
-	var clusterLogging v3.ClusterLoggingSpec
-	if err := convert.ToObj(data, &clusterLogging); err != nil {
-		return httperror.NewAPIError(httperror.InvalidBodyContent, fmt.Sprintf("%v", err))
-	}
+// type Validator struct {
+// 	ClusterDialer dialer.Factory
+// }
 
-	wp := utils.WrapClusterLogging{
-		ClusterLoggingSpec: clusterLogging,
-	}
+// func (v *Validator) ClusterLoggingValidator(resquest *types.APIContext, schema *types.Schema, data map[string]interface{}) error {
+// 	var clusterLogging v3.ClusterLoggingSpec
+// 	if err := convert.ToObj(data, &clusterLogging); err != nil {
+// 		return httperror.NewAPIError(httperror.InvalidBodyContent, fmt.Sprintf("%v", err))
+// 	}
 
-	if err := wp.Validate(); err != nil {
-		logrus.Warnf("clusterlogging %s input validate failed, %v", resquest.ID, err)
-		return httperror.NewAPIError(httperror.InvalidFormat, fmt.Sprintf("%v", err))
-	}
+// 	clusterLogging.ClusterName = convert.ToString(data["clusterId"])
+
+// 	return testClusterLoggingReachable(clusterLogging, v.ClusterDialer)
+// }
+
+// func (v *Validator) ProjectLoggingValidator(resquest *types.APIContext, schema *types.Schema, data map[string]interface{}) error {
+// 	var projectLogging v3.ProjectLoggingSpec
+// 	if err := convert.ToObj(data, &projectLogging); err != nil {
+// 		return httperror.NewAPIError(httperror.InvalidBodyContent, fmt.Sprintf("%v", err))
+// 	}
+
+// 	clusterName, _ := ref.Parse(convert.ToString(data["projectId"]))
+// 	return testProjectLoggingReachable(clusterName, projectLogging, v.ClusterDialer)
+// }
+
+func testClusterLoggingReachable(input v3.LoggingInput, ClusterDialer dialer.Factory) error {
+	// wp := utils.WrapClusterLogging{
+	// 	ClusterLoggingSpec: spec,
+	// }
+
+	// if err := wp.Validate(ClusterDialer); err != nil {
+	// 	return httperror.NewAPIError(httperror.InvalidFormat, fmt.Sprintf("%v", err))
+	// }
 	return nil
 }
 
-func ProjectLoggingValidator(resquest *types.APIContext, schema *types.Schema, data map[string]interface{}) error {
-	var projectLogging v3.ProjectLoggingSpec
-	if err := convert.ToObj(data, &projectLogging); err != nil {
-		return httperror.NewAPIError(httperror.InvalidBodyContent, fmt.Sprintf("%v", err))
-	}
+func testProjectLoggingReachable(clusterName string, input v3.LoggingInput, ClusterDialer dialer.Factory) error {
+	// wp := utils.WrapProjectLogging{
+	// 	ClusterName:        clusterName,
+	// 	ProjectLoggingSpec: spec,
+	// }
 
-	wp := utils.WrapProjectLogging{
-		ProjectLoggingSpec: projectLogging,
-	}
-
-	if err := wp.Validate(); err != nil {
-		logrus.Warnf("projectlogging %s input validate failed, %v", resquest.ID, err)
-		return httperror.NewAPIError(httperror.InvalidFormat, fmt.Sprintf("%v", err))
-	}
+	// if err := wp.Validate(ClusterDialer); err != nil {
+	// 	return httperror.NewAPIError(httperror.InvalidFormat, fmt.Sprintf("%v", err))
+	// }
 	return nil
 }
