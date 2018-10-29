@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -520,6 +521,7 @@ func (c *Conn) WriteMessage(messageType int, data []byte) error {
 			return err
 		}
 	}
+	fmt.Println("---success write")
 	return nil
 }
 

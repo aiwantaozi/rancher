@@ -78,9 +78,9 @@ type ClusterLoggingOperations interface {
 	ByID(id string) (*ClusterLogging, error)
 	Delete(container *ClusterLogging) error
 
-	ActionTest(resource *ClusterLogging, input *LoggingInput) error
+	ActionTest(resource *ClusterLogging, input *ClusterLoggingInput) error
 
-	CollectionActionTest(resource *ClusterLoggingCollection, input *LoggingInput) error
+	CollectionActionTest(resource *ClusterLoggingCollection, input *ClusterLoggingInput) error
 }
 
 func newClusterLoggingClient(apiClient *Client) *ClusterLoggingClient {
@@ -134,12 +134,12 @@ func (c *ClusterLoggingClient) Delete(container *ClusterLogging) error {
 	return c.apiClient.Ops.DoResourceDelete(ClusterLoggingType, &container.Resource)
 }
 
-func (c *ClusterLoggingClient) ActionTest(resource *ClusterLogging, input *LoggingInput) error {
+func (c *ClusterLoggingClient) ActionTest(resource *ClusterLogging, input *ClusterLoggingInput) error {
 	err := c.apiClient.Ops.DoAction(ClusterLoggingType, "test", &resource.Resource, input, nil)
 	return err
 }
 
-func (c *ClusterLoggingClient) CollectionActionTest(resource *ClusterLoggingCollection, input *LoggingInput) error {
+func (c *ClusterLoggingClient) CollectionActionTest(resource *ClusterLoggingCollection, input *ClusterLoggingInput) error {
 	err := c.apiClient.Ops.DoCollectionAction(ClusterLoggingType, "test", &resource.Collection, input, nil)
 	return err
 }

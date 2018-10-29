@@ -32,6 +32,7 @@ func newSessionManager() *sessionManager {
 }
 
 func toDialer(s *session, prefix string, deadline time.Duration) dialer.Dialer {
+	fmt.Println("--to dailer")
 	return func(proto, address string) (net.Conn, error) {
 		if prefix == "" {
 			return s.serverConnect(deadline, proto, address)

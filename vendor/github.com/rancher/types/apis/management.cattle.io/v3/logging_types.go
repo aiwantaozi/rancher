@@ -164,7 +164,12 @@ type LoggingSystemImages struct {
 	LogAggregatorFlexVolumeDriver string `json:"logAggregatorFlexVolumeDriver,omitempty"`
 }
 
-type LoggingInput struct {
-	Endpoints []string `json:"endpoint,omitempty" norman:"required"`
-	Protocol  string   `json:"protocol,omitempty" norman:"default=udp,type=enum,options=udp|tcp"`
+type ClusterLoggingInput struct {
+	IncludeSystemComponent bool `json:"includeSystemComponent,omitempty"`
+	LoggingCommonSpec
+}
+
+type ProjectLoggingInput struct {
+	IncludeSystemComponent bool `json:"includeSystemComponent,omitempty"`
+	LoggingCommonSpec
 }

@@ -122,6 +122,7 @@ func (f *Factory) translateClusterAddress(cluster *v3.Cluster, clusterHostPort, 
 }
 
 func (f *Factory) clusterDialer(clusterName, address string) (dialer.Dialer, error) {
+	fmt.Println("----cluster dialer")
 	cluster, err := f.clusterLister.Get("", clusterName)
 	if err != nil {
 		return nil, err
@@ -188,6 +189,7 @@ func hostPort(cluster *v3.Cluster) string {
 }
 
 func native() (dialer.Dialer, error) {
+	fmt.Println("--native")
 	return func(network, address string) (net.Conn, error) {
 		return net.DialTimeout(network, address, 30*time.Second)
 	}, nil
@@ -225,6 +227,7 @@ func (f *Factory) NodeDialer(clusterName, machineName string) (dialer.Dialer, er
 }
 
 func (f *Factory) nodeDialer(clusterName, machineName string) (dialer.Dialer, error) {
+	fmt.Println("----node dialer")
 	machine, err := f.nodeLister.Get(clusterName, machineName)
 	if err != nil {
 		return nil, err

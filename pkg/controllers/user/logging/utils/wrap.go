@@ -1,14 +1,19 @@
 package utils
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net"
 
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	loggingconfig "github.com/rancher/rancher/pkg/controllers/user/logging/config"
 	"github.com/rancher/rancher/pkg/settings"
@@ -25,6 +30,10 @@ const (
 var (
 	timeout = 5 * time.Second
 )
+
+type WrapTarget interface {
+	isReachabel(dialer dialer.Factory, clusterName string) (bool, error)
+}
 
 type TLS struct {
 	EnableTLS          bool
@@ -62,28 +71,33 @@ type WrapProjectLogging struct {
 }
 
 type WrapElasticsearch struct {
+	v3.ElasticsearchConfig
 	DateFormat string
 	Host       string
 	Scheme     string
 }
 
 type WrapSplunk struct {
+	v3.SplunkConfig
 	Host   string
 	Port   string
 	Scheme string
 }
 
 type WrapKafka struct {
+	v3.KafkaConfig
 	Brokers   string
 	Zookeeper string
 }
 
 type WrapSyslog struct {
+	v3.SyslogConfig
 	Host string
 	Port string
 }
 
 type WrapFluentForwarder struct {
+	v3.FluentForwarderConfig
 	EnableShareKey bool
 	FluentServers  []FluentServer
 }
@@ -94,25 +108,124 @@ type FluentServer struct {
 	v3.FluentServer
 }
 
-func CheckEndpoint(dialer dialer.Factory, clusterName, protocal string, endpoints []string) error {
+func (w *WrapElasticsearch) isReachabel(dialer dialer.Factory, clusterName string) (bool, error) {
+
+	return false, nil
+}
+
+func CheckClusterEndpoint(dialer dialer.Factory, clusterName, protocal string, endpoints []string) error {
+	var errgrp errgroup.Group
 	for _, v := range endpoints {
-		netDialerErr := dial(protocal, v, netDialer)
-		if netDialerErr == nil {
-			fmt.Println("--here 1")
-			continue
+		e := v
+		errgrp.Go(func() error {
+			netDialerErr := dial(protocal, e, netDialer)
+			if netDialerErr == nil {
+				return nil
+			}
+
+			clusterDialer, err := dialer.ClusterDialer(clusterName)
+			if err != nil {
+				return err
+			}
+			// clusterDialErr := dial(protocal, e, clusterDialer)
+			// if clusterDialErr == nil {
+			// 	fmt.Println("---here")
+			// 	return nil
+			// }
+			client := &http.Client{
+				Transport: &http.Transport{
+					Dial: clusterDialer,
+				},
+				Timeout: 15 * time.Second,
+			}
+			res, clusterDialErr := client.Get(e)
+			if clusterDialErr == nil {
+				body, err := ioutil.ReadAll(res.Body)
+				if err != nil {
+					fmt.Println("---read body err:", err)
+				}
+				fmt.Println("---here:", string(body))
+				return nil
+			}
+			return fmt.Errorf("endpoint %v is not reachable on the internet %v, also not reachable inside cluster %v", v, netDialerErr, clusterDialErr)
+		})
+	}
+	return errgrp.Wait()
+}
+
+// func sendHttpReq(dialer dialer.Dialer, endpoint string) error {
+// 	pluginProxyTransport = &http.Transport{
+// 		TLSClientConfig: &tls.Config{
+// 			InsecureSkipVerify: setting.PluginAppsSkipVerifyTLS,
+// 			Renegotiation:      tls.RenegotiateFreelyAsClient,
+// 		},
+// 		Dial: dialer,
+// 		TLSHandshakeTimeout: 10 * time.Second,
+// 	}
+
+// 	client := &http.Client{
+// 		Transport: &http.Transport{
+// 			Dial: dialer,
+// 		},
+// 		Timeout: 15 * time.Second,
+// 	}
+// 	_, err := client.Do(endpoint)
+// 	if err != nil {
+// 		return fmt.Errorf("endpoint %s is not reachable, %v", endpoint, err)
+// 	}
+// 	return nil
+// }
+
+type RequestConfig struct {
+	TLS
+	endpoint []string
+	protocol string
+}
+
+func (r *RequestConfig) dial(dailer func(network, address string) (net.Conn, error)) error {
+	if r.EnableTLS {
+		tlsConfig := tls.Config{
+			InsecureSkipVerify: r.InsecureSkipVerify,
 		}
-		clusterDialer, err := dialer.ClusterDialer(clusterName)
-		if err != nil {
-			return err
+		if r.Ca != "" {
+			certPool := x509.NewCertPool()
+			if !certPool.AppendCertsFromPEM([]byte(r.Ca)) {
+				return fmt.Errorf("Failed to append CA certificate")
+			}
+			tlsConfig.RootCAs = certPool
 		}
 
-		clusterDialErr := dial(protocal, v, clusterDialer)
-		if clusterDialErr == nil {
-			fmt.Println("--here 2")
-			continue
+		if r.Cert != "" {
+			cert, err := tls.X509KeyPair([]byte(r.Cert), []byte(r.Key))
+			if err != nil {
+				return fmt.Errorf("create logging target validate key pair failed, %v", err)
+			}
+			tlsConfig.Certificates = []tls.Certificate{cert}
 		}
-		return fmt.Errorf("endpoint %v is not reachable on the internet %v, also not reachable inside cluster %v", v, netDialerErr, clusterDialErr)
+
+		for _, v := range r.endpoint {
+			rawConn, err := dailer(r.protocol, v)
+			if err != nil {
+				return fmt.Errorf("create raw conn failed, %v", err)
+			}
+			conn := tls.Client(rawConn, &tlsConfig)
+			if err := conn.Handshake(); err != nil {
+				rawConn.Close()
+				return err
+			}
+			conn.Close()
+			rawConn.Close()
+		}
+	} else {
+		for _, v := range r.endpoint {
+			rawConn, err := dailer(r.protocol, v)
+			if err != nil {
+				return fmt.Errorf("create raw conn failed, %v", err)
+			}
+			rawConn.Close()
+		}
 	}
+
 	return nil
 }
 
@@ -121,32 +234,14 @@ func dial(protocal string, endpoint string, dailer func(network, address string)
 	if err != nil {
 		return fmt.Errorf("create raw conn failed, %v", err)
 	}
-	rawConn.Close()
+	tmp := make([]byte, 1)
+	_, err = rawConn.Write(tmp)
+	if err != nil {
+		return err
+	}
+	defer rawConn.Close()
 	return nil
 }
-
-// func (w *WrapClusterLogging) Validate(dialer dialer.Factory) error {
-// 	fmt.Println("---------0")
-// 	wrapLogging, err := GetWrapConfig(w.ElasticsearchConfig, w.SplunkConfig, w.SyslogConfig, w.KafkaConfig, w.FluentForwarderConfig)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	fmt.Println("---------00")
-
-// 	w.WrapLogging = wrapLogging
-// 	err = checkEndpoint(dialer, w.ClusterName)
-// 	return err
-// }
-
-// func (w *WrapProjectLogging) Validate(dialer dialer.Factory) error {
-// 	wrapLogging, err := GetWrapConfig(w.ElasticsearchConfig, w.SplunkConfig, w.SyslogConfig, w.KafkaConfig, w.FluentForwarderConfig)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	w.WrapLogging = wrapLogging
-// 	return w.checkEndpoint(dialer, w.ClusterName)
-// }
 
 func ToWrapClusterLogging(clusterLogging v3.ClusterLoggingSpec) (*WrapClusterLogging, error) {
 	excludeNamespace := strings.Replace(settings.SystemNamespaces.Get(), ",", "|", -1)
@@ -188,9 +283,10 @@ func GetWrapConfig(es *v3.ElasticsearchConfig, sp *v3.SplunkConfig, sl *v3.Syslo
 		}
 
 		wrapLogging.WrapElasticsearch = WrapElasticsearch{
-			Host:       h,
-			Scheme:     s,
-			DateFormat: getDateFormat(es.DateFormat),
+			ElasticsearchConfig: *es,
+			Host:                h,
+			Scheme:              s,
+			DateFormat:          getDateFormat(es.DateFormat),
 		}
 
 		wrapLogging.CurrentTarget = loggingconfig.Elasticsearch
@@ -218,9 +314,10 @@ func GetWrapConfig(es *v3.ElasticsearchConfig, sp *v3.SplunkConfig, sl *v3.Syslo
 			return
 		}
 		wrapLogging.WrapSplunk = WrapSplunk{
-			Host:   host,
-			Port:   port,
-			Scheme: s,
+			SplunkConfig: *sp,
+			Host:         host,
+			Port:         port,
+			Scheme:       s,
 		}
 
 		wrapLogging.CurrentTarget = loggingconfig.Splunk
@@ -243,8 +340,9 @@ func GetWrapConfig(es *v3.ElasticsearchConfig, sp *v3.SplunkConfig, sl *v3.Syslo
 			return
 		}
 		wrapLogging.WrapSyslog = WrapSyslog{
-			Host: host,
-			Port: port,
+			SyslogConfig: *sl,
+			Host:         host,
+			Port:         port,
 		}
 		wrapLogging.CurrentTarget = loggingconfig.Syslog
 		wrapLogging.network = sl.Protocol
@@ -297,6 +395,7 @@ func GetWrapConfig(es *v3.ElasticsearchConfig, sp *v3.SplunkConfig, sl *v3.Syslo
 				}
 			}
 		}
+		wrapLogging.WrapKafka.KafkaConfig = *kf
 		wrapLogging.CurrentTarget = loggingconfig.Kafka
 		wrapLogging.network = networkTCP
 		wrapLogging.endpoint = []string{kf.ZookeeperEndpoint}
@@ -323,8 +422,9 @@ func GetWrapConfig(es *v3.ElasticsearchConfig, sp *v3.SplunkConfig, sl *v3.Syslo
 			wrapLogging.endpoint = append(wrapLogging.endpoint, v.Endpoint)
 		}
 		wrapLogging.WrapFluentForwarder = WrapFluentForwarder{
-			EnableShareKey: enableShareKey,
-			FluentServers:  fss,
+			FluentForwarderConfig: *ff,
+			EnableShareKey:        enableShareKey,
+			FluentServers:         fss,
 		}
 		if ff.EnableTLS {
 			wrapLogging.TLS = TLS{

@@ -40,7 +40,7 @@ func (h *handler) ActionHandler(actionName string, action *types.Action, apiCont
 		return err
 	}
 
-	var input v3.LoggingInput
+	var input v3.ClusterLoggingInput
 	if err = convert.ToObj(actionInput, &input); err != nil {
 		return err
 	}
@@ -48,10 +48,10 @@ func (h *handler) ActionHandler(actionName string, action *types.Action, apiCont
 	arr := strings.Split(apiContext.ID, ":")
 	clusterName = arr[0]
 
-	err = utils.CheckEndpoint(h.clusterDialer, clusterName, input.Protocol, input.Endpoints)
+	err = utils.CheckClusterEndpoint(h.clusterDialer, input)
 	if err != nil {
 		return err
 	}
-	apiContext.WriteResponse(http.StatusOK, nil)
+	apiContext.WriteResponse(http.StatusNoContent, nil)
 	return nil
 }

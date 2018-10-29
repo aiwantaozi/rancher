@@ -72,9 +72,9 @@ type ProjectLoggingOperations interface {
 	ByID(id string) (*ProjectLogging, error)
 	Delete(container *ProjectLogging) error
 
-	ActionTest(resource *ProjectLogging, input *LoggingInput) error
+	ActionTest(resource *ProjectLogging, input *ProjectLoggingInput) error
 
-	CollectionActionTest(resource *ProjectLoggingCollection, input *LoggingInput) error
+	CollectionActionTest(resource *ProjectLoggingCollection, input *ProjectLoggingInput) error
 }
 
 func newProjectLoggingClient(apiClient *Client) *ProjectLoggingClient {
@@ -128,12 +128,12 @@ func (c *ProjectLoggingClient) Delete(container *ProjectLogging) error {
 	return c.apiClient.Ops.DoResourceDelete(ProjectLoggingType, &container.Resource)
 }
 
-func (c *ProjectLoggingClient) ActionTest(resource *ProjectLogging, input *LoggingInput) error {
+func (c *ProjectLoggingClient) ActionTest(resource *ProjectLogging, input *ProjectLoggingInput) error {
 	err := c.apiClient.Ops.DoAction(ProjectLoggingType, "test", &resource.Resource, input, nil)
 	return err
 }
 
-func (c *ProjectLoggingClient) CollectionActionTest(resource *ProjectLoggingCollection, input *LoggingInput) error {
+func (c *ProjectLoggingClient) CollectionActionTest(resource *ProjectLoggingCollection, input *ProjectLoggingInput) error {
 	err := c.apiClient.Ops.DoCollectionAction(ProjectLoggingType, "test", &resource.Collection, input, nil)
 	return err
 }

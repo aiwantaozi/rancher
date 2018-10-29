@@ -248,6 +248,7 @@ func (s *session) clientConnect(message *message) {
 }
 
 func (s *session) serverConnect(deadline time.Duration, proto, address string) (net.Conn, error) {
+	fmt.Println("----server connection:", address)
 	connID := atomic.AddInt64(&s.nextConnID, 1)
 	conn := newConnection(connID, s, proto, address)
 
@@ -268,7 +269,9 @@ func (s *session) serverConnect(deadline time.Duration, proto, address string) (
 }
 
 func (s *session) writeMessage(message *message) (int, error) {
+	fmt.Println("----before write message")
 	if PrintTunnelData {
+		fmt.Println("----WRITE:", message)
 		logrus.Debug("WRITE ", message)
 	}
 	return message.WriteTo(s.conn)
