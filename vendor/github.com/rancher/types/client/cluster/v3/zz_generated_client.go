@@ -10,8 +10,6 @@ type Client struct {
 	Namespace        NamespaceOperations
 	PersistentVolume PersistentVolumeOperations
 	StorageClass     StorageClassOperations
-	MonitorMetric    MonitorMetricOperations
-	MonitorGraph     MonitorGraphOperations
 }
 
 func NewClient(opts *clientbase.ClientOpts) (*Client, error) {
@@ -27,8 +25,6 @@ func NewClient(opts *clientbase.ClientOpts) (*Client, error) {
 	client.Namespace = newNamespaceClient(client)
 	client.PersistentVolume = newPersistentVolumeClient(client)
 	client.StorageClass = newStorageClassClient(client)
-	client.MonitorMetric = newMonitorMetricClient(client)
-	client.MonitorGraph = newMonitorGraphClient(client)
 
 	return client, nil
 }

@@ -3,7 +3,6 @@ package schema
 import (
 	"github.com/rancher/norman/types"
 	m "github.com/rancher/norman/types/mapper"
-	clusterv3 "github.com/rancher/types/apis/cluster.cattle.io/v3"
 	"github.com/rancher/types/factory"
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -21,8 +20,7 @@ var (
 	Schemas = factory.Schemas(&Version).
 		Init(namespaceTypes).
 		Init(persistentVolumeTypes).
-		Init(storageClassTypes).
-		Init(monitorTypes)
+		Init(storageClassTypes)
 )
 
 func namespaceTypes(schemas *types.Schemas) *types.Schemas {
@@ -87,10 +85,4 @@ func storageClassTypes(schemas *types.Schemas) *types.Schemas {
 			Description   string `json:"description"`
 			ReclaimPolicy string `json:"reclaimPolicy,omitempty" norman:"type=enum,options=Recycle|Delete|Retain"`
 		}{})
-}
-
-func monitorTypes(schemas *types.Schemas) *types.Schemas {
-	return schemas.
-		MustImport(&Version, clusterv3.MonitorMetric{}).
-		MustImport(&Version, clusterv3.MonitorGraph{})
 }

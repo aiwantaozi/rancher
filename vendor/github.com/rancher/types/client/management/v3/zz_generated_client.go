@@ -40,13 +40,16 @@ type Client struct {
 	ListenConfig                            ListenConfigOperations
 	Setting                                 SettingOperations
 	Notifier                                NotifierOperations
-	ClusterAlertRule                        ClusterAlertRuleOperations
 	ClusterAlertGroup                       ClusterAlertGroupOperations
-	ProjectAlertRule                        ProjectAlertRuleOperations
 	ProjectAlertGroup                       ProjectAlertGroupOperations
+	ClusterAlertRule                        ClusterAlertRuleOperations
+	ProjectAlertRule                        ProjectAlertRuleOperations
 	ComposeConfig                           ComposeConfigOperations
 	ProjectCatalog                          ProjectCatalogOperations
 	ClusterCatalog                          ClusterCatalogOperations
+	ClusterMonitorGraph                     ClusterMonitorGraphOperations
+	ProjectMonitorGraph                     ProjectMonitorGraphOperations
+	MonitorMetric                           MonitorMetricOperations
 }
 
 func NewClient(opts *clientbase.ClientOpts) (*Client, error) {
@@ -92,13 +95,16 @@ func NewClient(opts *clientbase.ClientOpts) (*Client, error) {
 	client.ListenConfig = newListenConfigClient(client)
 	client.Setting = newSettingClient(client)
 	client.Notifier = newNotifierClient(client)
-	client.ClusterAlertRule = newClusterAlertRuleClient(client)
 	client.ClusterAlertGroup = newClusterAlertGroupClient(client)
-	client.ProjectAlertRule = newProjectAlertRuleClient(client)
 	client.ProjectAlertGroup = newProjectAlertGroupClient(client)
+	client.ClusterAlertRule = newClusterAlertRuleClient(client)
+	client.ProjectAlertRule = newProjectAlertRuleClient(client)
 	client.ComposeConfig = newComposeConfigClient(client)
 	client.ProjectCatalog = newProjectCatalogClient(client)
 	client.ClusterCatalog = newClusterCatalogClient(client)
+	client.ClusterMonitorGraph = newClusterMonitorGraphClient(client)
+	client.ProjectMonitorGraph = newProjectMonitorGraphClient(client)
+	client.MonitorMetric = newMonitorMetricClient(client)
 
 	return client, nil
 }

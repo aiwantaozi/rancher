@@ -23,7 +23,6 @@ const (
 	ProjectAlertGroupFieldNamespaceId           = "namespaceId"
 	ProjectAlertGroupFieldOwnerReferences       = "ownerReferences"
 	ProjectAlertGroupFieldProjectID             = "projectId"
-	ProjectAlertGroupFieldProjectRules          = "projectRule"
 	ProjectAlertGroupFieldReason                = "reason"
 	ProjectAlertGroupFieldRecipients            = "recipients"
 	ProjectAlertGroupFieldRemoved               = "removed"
@@ -37,33 +36,32 @@ const (
 
 type ProjectAlertGroup struct {
 	types.Resource
-	APIVersion            string             `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
-	Annotations           map[string]string  `json:"annotations,omitempty" yaml:"annotations,omitempty"`
-	Code                  int64              `json:"code,omitempty" yaml:"code,omitempty"`
-	Created               string             `json:"created,omitempty" yaml:"created,omitempty"`
-	CreatorID             string             `json:"creatorId,omitempty" yaml:"creatorId,omitempty"`
-	Description           string             `json:"description,omitempty" yaml:"description,omitempty"`
-	Details               *StatusDetails     `json:"details,omitempty" yaml:"details,omitempty"`
-	GroupIntervalSeconds  int64              `json:"groupIntervalSeconds,omitempty" yaml:"groupIntervalSeconds,omitempty"`
-	GroupWaitSeconds      int64              `json:"groupWaitSeconds,omitempty" yaml:"groupWaitSeconds,omitempty"`
-	Kind                  string             `json:"kind,omitempty" yaml:"kind,omitempty"`
-	Labels                map[string]string  `json:"labels,omitempty" yaml:"labels,omitempty"`
-	ListMeta              *ListMeta          `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	Message               string             `json:"message,omitempty" yaml:"message,omitempty"`
-	Name                  string             `json:"name,omitempty" yaml:"name,omitempty"`
-	NamespaceId           string             `json:"namespaceId,omitempty" yaml:"namespaceId,omitempty"`
-	OwnerReferences       []OwnerReference   `json:"ownerReferences,omitempty" yaml:"ownerReferences,omitempty"`
-	ProjectID             string             `json:"projectId,omitempty" yaml:"projectId,omitempty"`
-	ProjectRules          []ProjectAlertRule `json:"projectRule,omitempty" yaml:"projectRule,omitempty"`
-	Reason                string             `json:"reason,omitempty" yaml:"reason,omitempty"`
-	Recipients            []Recipient        `json:"recipients,omitempty" yaml:"recipients,omitempty"`
-	Removed               string             `json:"removed,omitempty" yaml:"removed,omitempty"`
-	RepeatIntervalSeconds int64              `json:"repeatIntervalSeconds,omitempty" yaml:"repeatIntervalSeconds,omitempty"`
-	State                 string             `json:"state,omitempty" yaml:"state,omitempty"`
-	Status                string             `json:"status,omitempty" yaml:"status,omitempty"`
-	Transitioning         string             `json:"transitioning,omitempty" yaml:"transitioning,omitempty"`
-	TransitioningMessage  string             `json:"transitioningMessage,omitempty" yaml:"transitioningMessage,omitempty"`
-	UUID                  string             `json:"uuid,omitempty" yaml:"uuid,omitempty"`
+	APIVersion            string            `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
+	Annotations           map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+	Code                  int64             `json:"code,omitempty" yaml:"code,omitempty"`
+	Created               string            `json:"created,omitempty" yaml:"created,omitempty"`
+	CreatorID             string            `json:"creatorId,omitempty" yaml:"creatorId,omitempty"`
+	Description           string            `json:"description,omitempty" yaml:"description,omitempty"`
+	Details               *StatusDetails    `json:"details,omitempty" yaml:"details,omitempty"`
+	GroupIntervalSeconds  int64             `json:"groupIntervalSeconds,omitempty" yaml:"groupIntervalSeconds,omitempty"`
+	GroupWaitSeconds      int64             `json:"groupWaitSeconds,omitempty" yaml:"groupWaitSeconds,omitempty"`
+	Kind                  string            `json:"kind,omitempty" yaml:"kind,omitempty"`
+	Labels                map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	ListMeta              *ListMeta         `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	Message               string            `json:"message,omitempty" yaml:"message,omitempty"`
+	Name                  string            `json:"name,omitempty" yaml:"name,omitempty"`
+	NamespaceId           string            `json:"namespaceId,omitempty" yaml:"namespaceId,omitempty"`
+	OwnerReferences       []OwnerReference  `json:"ownerReferences,omitempty" yaml:"ownerReferences,omitempty"`
+	ProjectID             string            `json:"projectId,omitempty" yaml:"projectId,omitempty"`
+	Reason                string            `json:"reason,omitempty" yaml:"reason,omitempty"`
+	Recipients            []Recipient       `json:"recipients,omitempty" yaml:"recipients,omitempty"`
+	Removed               string            `json:"removed,omitempty" yaml:"removed,omitempty"`
+	RepeatIntervalSeconds int64             `json:"repeatIntervalSeconds,omitempty" yaml:"repeatIntervalSeconds,omitempty"`
+	State                 string            `json:"state,omitempty" yaml:"state,omitempty"`
+	Status                string            `json:"status,omitempty" yaml:"status,omitempty"`
+	Transitioning         string            `json:"transitioning,omitempty" yaml:"transitioning,omitempty"`
+	TransitioningMessage  string            `json:"transitioningMessage,omitempty" yaml:"transitioningMessage,omitempty"`
+	UUID                  string            `json:"uuid,omitempty" yaml:"uuid,omitempty"`
 }
 
 type ProjectAlertGroupCollection struct {

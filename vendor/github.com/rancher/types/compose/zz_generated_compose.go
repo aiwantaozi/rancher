@@ -39,20 +39,21 @@ type Config struct {
 	ListenConfigs                            map[string]managementClient.ListenConfig                            `json:"listenConfigs,omitempty" yaml:"listenConfigs,omitempty"`
 	Settings                                 map[string]managementClient.Setting                                 `json:"settings,omitempty" yaml:"settings,omitempty"`
 	Notifiers                                map[string]managementClient.Notifier                                `json:"notifiers,omitempty" yaml:"notifiers,omitempty"`
-	ClusterAlertRules                        map[string]managementClient.ClusterAlertRule                        `json:"clusterAlertRules,omitempty" yaml:"clusterAlertRules,omitempty"`
 	ClusterAlertGroups                       map[string]managementClient.ClusterAlertGroup                       `json:"clusterAlertGroups,omitempty" yaml:"clusterAlertGroups,omitempty"`
-	ProjectAlertRules                        map[string]managementClient.ProjectAlertRule                        `json:"projectAlertRules,omitempty" yaml:"projectAlertRules,omitempty"`
 	ProjectAlertGroups                       map[string]managementClient.ProjectAlertGroup                       `json:"projectAlertGroups,omitempty" yaml:"projectAlertGroups,omitempty"`
+	ClusterAlertRules                        map[string]managementClient.ClusterAlertRule                        `json:"clusterAlertRules,omitempty" yaml:"clusterAlertRules,omitempty"`
+	ProjectAlertRules                        map[string]managementClient.ProjectAlertRule                        `json:"projectAlertRules,omitempty" yaml:"projectAlertRules,omitempty"`
 	ComposeConfigs                           map[string]managementClient.ComposeConfig                           `json:"composeConfigs,omitempty" yaml:"composeConfigs,omitempty"`
 	ProjectCatalogs                          map[string]managementClient.ProjectCatalog                          `json:"projectCatalogs,omitempty" yaml:"projectCatalogs,omitempty"`
 	ClusterCatalogs                          map[string]managementClient.ClusterCatalog                          `json:"clusterCatalogs,omitempty" yaml:"clusterCatalogs,omitempty"`
+	ClusterMonitorGraphs                     map[string]managementClient.ClusterMonitorGraph                     `json:"clusterMonitorGraphs,omitempty" yaml:"clusterMonitorGraphs,omitempty"`
+	ProjectMonitorGraphs                     map[string]managementClient.ProjectMonitorGraph                     `json:"projectMonitorGraphs,omitempty" yaml:"projectMonitorGraphs,omitempty"`
+	MonitorMetrics                           map[string]managementClient.MonitorMetric                           `json:"monitorMetrics,omitempty" yaml:"monitorMetrics,omitempty"`
 
 	// Cluster Client
 	Namespaces        map[string]clusterClient.Namespace        `json:"namespaces,omitempty" yaml:"namespaces,omitempty"`
 	PersistentVolumes map[string]clusterClient.PersistentVolume `json:"persistentVolumes,omitempty" yaml:"persistentVolumes,omitempty"`
 	StorageClasss     map[string]clusterClient.StorageClass     `json:"storageClasses,omitempty" yaml:"storageClasses,omitempty"`
-	MonitorMetrics    map[string]clusterClient.MonitorMetric    `json:"monitorMetrics,omitempty" yaml:"monitorMetrics,omitempty"`
-	MonitorGraphs     map[string]clusterClient.MonitorGraph     `json:"monitorGraphs,omitempty" yaml:"monitorGraphs,omitempty"`
 
 	// Project Client
 	PersistentVolumeClaims         map[string]projectClient.PersistentVolumeClaim         `json:"persistentVolumeClaims,omitempty" yaml:"persistentVolumeClaims,omitempty"`

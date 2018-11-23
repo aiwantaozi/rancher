@@ -35,7 +35,8 @@ var (
 		Init(alertTypes).
 		Init(composeType).
 		Init(projectCatalogTypes).
-		Init(clusterCatalogTypes)
+		Init(clusterCatalogTypes).
+		Init(monitorTypes)
 
 	TokenSchemas = factory.Schemas(&Version).
 			Init(tokens)
@@ -591,4 +592,59 @@ func clusterCatalogTypes(schemas *types.Schemas) *types.Schemas {
 				"refresh": {},
 			}
 		})
+}
+
+func monitorTypes(schemas *types.Schemas) *types.Schemas {
+	return schemas.
+		MustImport(&Version, v3.ClusterMonitorGraph{}).
+		MustImport(&Version, v3.ProjectMonitorGraph{}).
+		MustImport(&Version, v3.QueryGraphInput{}).
+		MustImport(&Version, v3.QueryGraphOutput{}).
+		MustImport(&Version, v3.QueryGraphOutputCollection{}).
+		MustImport(&Version, v3.QueryMetricInput{}).
+		MustImport(&Version, v3.QueryMetricOutput{}).
+		MustImport(&Version, v3.MetricNamesOutput{}).
+		MustImport(&Version, v3.Serie{}).
+		MustImportAndCustomize(&Version, v3.MonitorMetric{}, func(schema *types.Schema) {
+			schema.CollectionActions = map[string]types.Action{
+				"query": {
+					Input:  "queryMetricInput",
+					Output: "queryMetricOutput",
+				},
+				"listmetricname": {
+					Output: "metricNamesOutput",
+				},
+			}
+		}).
+		MustImportAndCustomize(&Version, v3.ClusterMonitorGraph{}, func(schema *types.Schema) {
+			schema.ResourceActions = map[string]types.Action{
+				"query": {
+					Input:  "queryGraphInput",
+					Output: "queryGraphOutput",
+				},
+			}
+			schema.CollectionActions = map[string]types.Action{
+				"query": {
+					Input:  "queryGraphInput",
+					Output: "queryGraphOutputCollection",
+				},
+			}
+
+		}).
+		MustImportAndCustomize(&Version, v3.ProjectMonitorGraph{}, func(schema *types.Schema) {
+			schema.ResourceActions = map[string]types.Action{
+				"query": {
+					Input:  "queryGraphInput",
+					Output: "queryGraphOutput",
+				},
+			}
+			schema.CollectionActions = map[string]types.Action{
+				"query": {
+					Input:  "queryGraphInput",
+					Output: "queryGraphOutputCollection",
+				},
+			}
+
+		})
+
 }
