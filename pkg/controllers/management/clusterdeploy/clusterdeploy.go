@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 	"github.com/rancher/norman/store/crd"
 	"github.com/rancher/rancher/pkg/controllers/user/helm/common"
 	"github.com/rancher/rancher/pkg/monitoring"
@@ -234,14 +234,14 @@ func (cd *clusterDeploy) deployPrometheusOperator(cluster *mgmtv3.Cluster) (stri
 
 	kubeConfig, err := clustermanager.ToRESTConfig(cluster, cd.clusterManager.ScaledContext)
 	if err != nil {
-		return "", errors.Annotatef(err, "failed to create RESTConfig for cluster %s", clusterTag)
+		return "", errors.Wrapf(err, "failed to create RESTConfig for cluster %s", clusterTag)
 	}
 
 	var appProjectName string
 	_, err = mgmtv3.ClusterConditionPrometheusOperatorDeployed.Do(cluster, func() (runtime.Object, error) {
 		factory, err := crd.NewFactoryFromClient(*kubeConfig)
 		if err != nil {
-			return nil, errors.Annotatef(err, "failed to create CRD factory for cluster %s", clusterTag)
+			return nil, errors.Wrapf(err, "failed to create CRD factory for cluster %s", clusterTag)
 		}
 
 		// create Prometheus Operator CRD
@@ -257,22 +257,22 @@ func (cd *clusterDeploy) deployPrometheusOperator(cluster *mgmtv3.Cluster) (stri
 		// deploy Prometheus Operator
 		agentContext, err := cd.clusterManager.UserContext(cluster.Name)
 		if err != nil {
-			return nil, errors.Annotatef(err, "failed to create UserContext for cluster %s", clusterTag)
+			return nil, errors.Wrapf(err, "failed to create UserContext for cluster %s", clusterTag)
 		}
 
 		appProjectName, err = ensureMonitoringProjectName(agentContext.Core.Namespaces(metav1.NamespaceAll), cd.projectsGetter.Projects(cluster.Name), cluster.Name, appTargetNamespace)
 		if err != nil {
-			return nil, errors.Annotatef(err, "failed to ensure monitoring project name for Cluster %s", clusterTag)
+			return nil, errors.Wrapf(err, "failed to ensure monitoring project name for Cluster %s", clusterTag)
 		}
 
 		appServiceAccountName, err := grantSystemMonitoringRBAC(agentContext.Core.(corev1.ServiceAccountsGetter), agentContext.RBAC, appName, appTargetNamespace)
 		if err != nil {
-			return nil, errors.Annotatef(err, "failed to grant prometheus operator RBAC for Cluster %s", clusterTag)
+			return nil, errors.Wrapf(err, "failed to grant prometheus operator RBAC for Cluster %s", clusterTag)
 		}
 
 		err = deploySystemMonitoring(cd.appsGetter, cd.templateVersions, cluster.Annotations[monitoring.CattleCreatorIDAnnotationKey], appProjectName, appName, appTargetNamespace, appServiceAccountName)
 		if err != nil {
-			return nil, errors.Annotatef(err, "failed to ensure prometheus operator app for Cluster %s", clusterTag)
+			return nil, errors.Wrapf(err, "failed to ensure prometheus operator app for Cluster %s", clusterTag)
 		}
 
 		return cluster, nil
@@ -288,7 +288,7 @@ func ensureMonitoringProjectName(agentNamespacesClient corev1.NamespaceInterface
 	// detect Namespace
 	deployNamespace, err := agentNamespacesClient.Get(appTargetNamespace, metav1.GetOptions{})
 	if err != nil && !k8serrors.IsNotFound(err) {
-		return "", errors.Annotatef(err, "failed to find %q Namespace", appTargetNamespace)
+		return "", errors.Wrapf(err, "failed to find %q Namespace", appTargetNamespace)
 	}
 	deployNamespace = deployNamespace.DeepCopy()
 
@@ -304,7 +304,7 @@ func ensureMonitoringProjectName(agentNamespacesClient corev1.NamespaceInterface
 		}
 
 		if deployNamespace, err = agentNamespacesClient.Create(deployNamespace); err != nil && !k8serrors.IsAlreadyExists(err) {
-			return "", errors.Annotatef(err, "failed to create %q Namespace", appTargetNamespace)
+			return "", errors.Wrapf(err, "failed to create %q Namespace", appTargetNamespace)
 		}
 	}
 
@@ -341,7 +341,7 @@ func ensureMonitoringProjectName(agentNamespacesClient corev1.NamespaceInterface
 
 		_, err := agentNamespacesClient.Update(deployNamespace)
 		if err != nil {
-			return "", errors.Annotatef(err, "failed to move Namespace %s to Project %s", appTargetNamespace, deployProject.Spec.DisplayName)
+			return "", errors.Wrapf(err, "failed to move Namespace %s to Project %s", appTargetNamespace, deployProject.Spec.DisplayName)
 		}
 	}
 
@@ -359,7 +359,7 @@ func grantSystemMonitoringRBAC(agentServiceAccountGetter corev1.ServiceAccountsG
 		func() error {
 			appServiceAccount, err := agentServiceAccountGetter.ServiceAccounts(appTargetNamespace).Get(appServiceAccountName, metav1.GetOptions{})
 			if err != nil && !k8serrors.IsNotFound(err) {
-				return errors.Annotatef(err, "failed to query %q ServiceAccount", appServiceAccountName)
+				return errors.Wrapf(err, "failed to query %q ServiceAccount", appServiceAccountName)
 			}
 			if appServiceAccount.Name == appServiceAccountName {
 				if appServiceAccount.DeletionTimestamp != nil {
@@ -375,7 +375,7 @@ func grantSystemMonitoringRBAC(agentServiceAccountGetter corev1.ServiceAccountsG
 				}
 
 				if _, err := agentServiceAccountGetter.ServiceAccounts(appTargetNamespace).Create(appServiceAccount); err != nil && !k8serrors.IsAlreadyExists(err) {
-					return errors.Annotatef(err, "failed to create %q ServiceAccount", appServiceAccountName)
+					return errors.Wrapf(err, "failed to create %q ServiceAccount", appServiceAccountName)
 				}
 			}
 
@@ -386,7 +386,7 @@ func grantSystemMonitoringRBAC(agentServiceAccountGetter corev1.ServiceAccountsG
 		func() error {
 			appClusterRole, err := agentRBACClient.ClusterRoles(metav1.NamespaceAll).Get(appClusterRoleName, metav1.GetOptions{})
 			if err != nil && !k8serrors.IsNotFound(err) {
-				return errors.Annotatef(err, "failed to query %q ClusterRole", appClusterRoleName)
+				return errors.Wrapf(err, "failed to query %q ClusterRole", appClusterRoleName)
 			}
 
 			rules := []k8srbacv1.PolicyRule{
@@ -431,7 +431,7 @@ func grantSystemMonitoringRBAC(agentServiceAccountGetter corev1.ServiceAccountsG
 				appClusterRole = appClusterRole.DeepCopy()
 				appClusterRole.Rules = rules
 				if _, err := agentRBACClient.ClusterRoles(metav1.NamespaceAll).Update(appClusterRole); err != nil {
-					return errors.Annotatef(err, "failed to update %q ClusterRole", appClusterRoleName)
+					return errors.Wrapf(err, "failed to update %q ClusterRole", appClusterRoleName)
 				}
 			} else {
 				appClusterRole = &k8srbacv1.ClusterRole{
@@ -443,7 +443,7 @@ func grantSystemMonitoringRBAC(agentServiceAccountGetter corev1.ServiceAccountsG
 				}
 
 				if _, err := agentRBACClient.ClusterRoles(metav1.NamespaceAll).Create(appClusterRole); err != nil && !k8serrors.IsAlreadyExists(err) {
-					return errors.Annotatef(err, "failed to create %q ClusterRole", appClusterRoleName)
+					return errors.Wrapf(err, "failed to create %q ClusterRole", appClusterRoleName)
 				}
 			}
 
@@ -454,7 +454,7 @@ func grantSystemMonitoringRBAC(agentServiceAccountGetter corev1.ServiceAccountsG
 		func() error {
 			appClusterRoleBinding, err := agentRBACClient.ClusterRoleBindings(metav1.NamespaceAll).Get(appClusterRoleBindingName, metav1.GetOptions{})
 			if err != nil && !k8serrors.IsNotFound(err) {
-				return errors.Annotatef(err, "failed to query %q ClusterRoleBinding", appClusterRoleBindingName)
+				return errors.Wrapf(err, "failed to query %q ClusterRoleBinding", appClusterRoleBindingName)
 			}
 			if appClusterRoleBinding.Name == appClusterRoleBindingName {
 				if appClusterRoleBinding.DeletionTimestamp != nil {
@@ -481,7 +481,7 @@ func grantSystemMonitoringRBAC(agentServiceAccountGetter corev1.ServiceAccountsG
 				}
 
 				if _, err := agentRBACClient.ClusterRoleBindings(metav1.NamespaceAll).Create(appClusterRoleBinding); err != nil && !k8serrors.IsAlreadyExists(err) {
-					return errors.Annotatef(err, "failed to create %q ClusterRoleBinding", appClusterRoleBindingName)
+					return errors.Wrapf(err, "failed to create %q ClusterRoleBinding", appClusterRoleBindingName)
 				}
 			}
 
@@ -501,7 +501,7 @@ func deploySystemMonitoring(cattleAppsGetter projectv3.AppsGetter, cattleTemplat
 	// detect App "system-monitoring"
 	app, err := cattleAppsGetter.Apps(projectID).Get(appName, metav1.GetOptions{})
 	if err != nil && !k8serrors.IsNotFound(err) {
-		return errors.Annotatef(err, "failed to query %q App in %s Project", appName, projectID)
+		return errors.Wrapf(err, "failed to query %q App in %s Project", appName, projectID)
 	}
 	if app.Name == appName {
 		if app.DeletionTimestamp != nil {
@@ -515,7 +515,7 @@ func deploySystemMonitoring(cattleAppsGetter projectv3.AppsGetter, cattleTemplat
 	appCatalogID := settings.SystemMonitoringCatalogID.Get()
 	templateVersionID, err := common.ParseExternalID(appCatalogID)
 	if err != nil {
-		return errors.Annotatef(err, "failed to parse catalog ID %q", appCatalogID)
+		return errors.Wrapf(err, "failed to parse catalog ID %q", appCatalogID)
 	}
 	for {
 		if _, err := cattleTemplateVersionsClient.Get(templateVersionID, metav1.GetOptions{}); err != nil {
@@ -551,7 +551,7 @@ func deploySystemMonitoring(cattleAppsGetter projectv3.AppsGetter, cattleTemplat
 	}
 
 	if _, err := cattleAppsGetter.Apps(projectID).Create(app); err != nil && !k8serrors.IsAlreadyExists(err) {
-		return errors.Annotatef(err, "failed to create %q App", appName)
+		return errors.Wrapf(err, "failed to create %q App", appName)
 	}
 
 	return nil
@@ -569,7 +569,7 @@ func (cd *clusterDeploy) deploySystemMetricExpression(cluster *mgmtv3.Cluster, a
 	_, err := mgmtv3.ClusterConditionMetricExpressionDeployed.Do(cluster, func() (runtime.Object, error) {
 		app, err := cd.appsGetter.Apps(projectID).Get(appName, metav1.GetOptions{})
 		if err != nil && !k8serrors.IsNotFound(err) {
-			return nil, errors.Annotatef(err, "failed to query %q App in %s Project", appName, projectID)
+			return nil, errors.Wrapf(err, "failed to query %q App in %s Project", appName, projectID)
 		}
 		if app.Name == appName {
 			if app.DeletionTimestamp != nil {
@@ -591,12 +591,12 @@ func (cd *clusterDeploy) deploySystemMetricExpression(cluster *mgmtv3.Cluster, a
 
 		kubeConfig, err := clustermanager.ToRESTConfig(cluster, cd.clusterManager.ScaledContext)
 		if err != nil {
-			return nil, errors.Annotatef(err, "failed to create RESTConfig for cluster %s", cluster.Name)
+			return nil, errors.Wrapf(err, "failed to create RESTConfig for cluster %s", cluster.Name)
 		}
 
 		factory, err := crd.NewFactoryFromClient(*kubeConfig)
 		if err != nil {
-			return nil, errors.Annotatef(err, "failed to create CRD factory for cluster %s", cluster.Name)
+			return nil, errors.Wrapf(err, "failed to create CRD factory for cluster %s", cluster.Name)
 		}
 
 		factory.BatchCreateCRDs(cd.ctx, config.UserStorageContext, cd.clusterManager.ScaledContext.Schemas, &clusterv3schema.Version,
@@ -628,7 +628,7 @@ func (cd *clusterDeploy) deploySystemMetricExpression(cluster *mgmtv3.Cluster, a
 		}
 
 		if _, err := cd.appsGetter.Apps(projectID).Create(app); err != nil && !k8serrors.IsAlreadyExists(err) {
-			return nil, errors.Annotatef(err, "failed to create %q App", appName)
+			return nil, errors.Wrapf(err, "failed to create %q App", appName)
 		}
 		return nil, nil
 	})

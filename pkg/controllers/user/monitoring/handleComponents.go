@@ -4,7 +4,7 @@ package monitoring
 import (
 	"fmt"
 
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 	appsv1beta2 "github.com/rancher/types/apis/apps/v1beta2"
 	mgmtv3 "github.com/rancher/types/apis/management.cattle.io/v3"
 
@@ -27,7 +27,7 @@ func isGrafanaDeployed(workloadsClient appsv1beta2.Interface, appNamespace, appN
 				return nil, errors.New("Grafana Deployment isn't deployed")
 			}
 
-			return nil, errors.Annotate(err, "failed to get Grafana Deployment information")
+			return nil, errors.Wrap(err, "failed to get Grafana Deployment information")
 		}
 
 		status := obj.Status
@@ -52,7 +52,7 @@ func isGrafanaWithdrew(workloadsClient appsv1beta2.Interface, appNamespace, appN
 				return monitoringStatus, nil
 			}
 
-			return nil, errors.Annotate(err, "failed to get Grafana Deployment information")
+			return nil, errors.Wrap(err, "failed to get Grafana Deployment information")
 		}
 
 		return nil, errors.New("Grafana Deployment is withdrawing")
@@ -69,7 +69,7 @@ func isNodeExporterDeployed(workloadsClient appsv1beta2.Interface, appNamespace,
 				return nil, errors.New("Node Exporter DaemonSet isn't deployed")
 			}
 
-			return nil, errors.Annotate(err, "failed to get Node Exporter DaemonSet information")
+			return nil, errors.Wrap(err, "failed to get Node Exporter DaemonSet information")
 		}
 
 		if obj.Status.DesiredNumberScheduled != obj.Status.CurrentNumberScheduled {
@@ -90,7 +90,7 @@ func isNodeExporterWithdrew(workloadsClient appsv1beta2.Interface, appNamespace,
 				return monitoringStatus, nil
 			}
 
-			return nil, errors.Annotate(err, "failed to get Node Exporter DaemonSet information")
+			return nil, errors.Wrap(err, "failed to get Node Exporter DaemonSet information")
 		}
 
 		return nil, errors.New("Node Exporter DaemonSet is withdrawing")
@@ -107,7 +107,7 @@ func isKubeStateExporterDeployed(workloadsClient appsv1beta2.Interface, appNames
 				return nil, errors.New("Kube State Exporter Deployment isn't deployed")
 			}
 
-			return nil, errors.Annotate(err, "failed to get Kube State Exporter Deployment information")
+			return nil, errors.Wrap(err, "failed to get Kube State Exporter Deployment information")
 		}
 
 		status := obj.Status
@@ -129,7 +129,7 @@ func isKubeStateExporterWithdrew(workloadsClient appsv1beta2.Interface, appNames
 				return monitoringStatus, nil
 			}
 
-			return nil, errors.Annotate(err, "failed to get Kube State Exporter Deployment information")
+			return nil, errors.Wrap(err, "failed to get Kube State Exporter Deployment information")
 		}
 
 		return nil, errors.New("Kube State Exporter Deployment is withdrawing")
@@ -146,7 +146,7 @@ func isPrometheusDeployed(workloadsClient appsv1beta2.Interface, appNamespace, a
 				return nil, errors.New("Prometheus StatefulSet isn't deployed")
 			}
 
-			return nil, errors.Annotate(err, "failed to get Prometheus StatefulSet information")
+			return nil, errors.Wrap(err, "failed to get Prometheus StatefulSet information")
 		}
 
 		if obj.Status.Replicas != obj.Status.CurrentReplicas {
@@ -167,7 +167,7 @@ func isPrometheusWithdrew(workloadsClient appsv1beta2.Interface, appNamespace, a
 				return monitoringStatus, nil
 			}
 
-			return nil, errors.Annotate(err, "failed to get Prometheus StatefulSet information")
+			return nil, errors.Wrap(err, "failed to get Prometheus StatefulSet information")
 		}
 
 		return nil, errors.New("Prometheus StatefulSet is withdrawing")

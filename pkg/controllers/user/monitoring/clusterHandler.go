@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 	kcluster "github.com/rancher/kontainer-engine/cluster"
 	"github.com/rancher/rancher/pkg/controllers/user/helm/common"
 	"github.com/rancher/rancher/pkg/monitoring"
@@ -80,7 +80,7 @@ func (ch *clusterHandler) sync(key string, cluster *mgmtv3.Cluster) (runtime.Obj
 	if !reflect.DeepEqual(cpy, src) {
 		_, err := ch.cattleClustersClient.Update(cpy)
 		if err != nil {
-			return cluster, errors.Annotatef(err, "failed to update Cluster %s", clusterTag)
+			return cluster, errors.Wrapf(err, "failed to update Cluster %s", clusterTag)
 		}
 	}
 
@@ -97,7 +97,7 @@ func (ch *clusterHandler) doSync(clusterTag string, cluster *mgmtv3.Cluster) err
 			if err != nil {
 				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
 				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
-				return errors.Annotatef(err, "failed to ensure monitoring project name for Cluster %s", clusterTag)
+				return errors.Wrapf(err, "failed to ensure monitoring project name for Cluster %s", clusterTag)
 			}
 
 			var etcdTLSConfigs []*etcdTLSConfig
@@ -106,12 +106,12 @@ func (ch *clusterHandler) doSync(clusterTag string, cluster *mgmtv3.Cluster) err
 				if etcdTLSConfigs, err = ch.app.deployEtcdCert(cluster.Name); err != nil {
 					mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
 					mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
-					return errors.Annotatef(err, "failed to deploy etcd cert for Cluster %s", clusterTag)
+					return errors.Wrapf(err, "failed to deploy etcd cert for Cluster %s", clusterTag)
 				}
 				if systemComponentMap, err = ch.app.getExporterEndpoint(); err != nil {
 					mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
 					mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
-					return errors.Annotatef(err, "failed to get exporter endpoint of Cluster %s", clusterTag)
+					return errors.Wrapf(err, "failed to get exporter endpoint of Cluster %s", clusterTag)
 				}
 			}
 
@@ -119,19 +119,19 @@ func (ch *clusterHandler) doSync(clusterTag string, cluster *mgmtv3.Cluster) err
 			if err != nil {
 				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
 				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
-				return errors.Annotatef(err, "failed to grant prometheus RBAC into Cluster %s", clusterTag)
+				return errors.Wrapf(err, "failed to grant prometheus RBAC into Cluster %s", clusterTag)
 			}
 
 			if err := ch.app.deployClusterMonitoring(appName, appTargetNamespace, appServiceAccountName, appProjectName, cluster, etcdTLSConfigs, systemComponentMap); err != nil {
 				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
 				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
-				return errors.Annotatef(err, "failed to deploy monitoring into Cluster %s", clusterTag)
+				return errors.Wrapf(err, "failed to deploy monitoring into Cluster %s", clusterTag)
 			}
 
 			if err := ch.detectMonitoringComponentsWhileInstall(appName, appTargetNamespace, cluster); err != nil {
 				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
 				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
-				return errors.Annotatef(err, "failed to detect the installation status of monitoring components in Cluster %s", clusterTag)
+				return errors.Wrapf(err, "failed to detect the installation status of monitoring components in Cluster %s", clusterTag)
 			}
 
 			mgmtv3.ClusterConditionMonitoringEnabled.True(cluster)
@@ -149,19 +149,19 @@ func (ch *clusterHandler) doSync(clusterTag string, cluster *mgmtv3.Cluster) err
 			if err := ch.app.withdrawMonitoring(appName, appTargetNamespace); err != nil {
 				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
 				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
-				return errors.Annotatef(err, "failed to withdraw monitoring from Cluster %s", clusterTag)
+				return errors.Wrapf(err, "failed to withdraw monitoring from Cluster %s", clusterTag)
 			}
 
 			if err := ch.detectMonitoringComponentsWhileUninstall(appName, appTargetNamespace, cluster); err != nil {
 				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
 				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
-				return errors.Annotatef(err, "failed to detect the uninstallation status of monitoring components in Cluster %s", clusterTag)
+				return errors.Wrapf(err, "failed to detect the uninstallation status of monitoring components in Cluster %s", clusterTag)
 			}
 
 			if err := ch.app.revokeClusterMonitoringRBAC(appName, appTargetNamespace); err != nil {
 				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
 				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
-				return errors.Annotatef(err, "failed to revoke prometheus RBAC from Cluster %s", clusterTag)
+				return errors.Wrapf(err, "failed to revoke prometheus RBAC from Cluster %s", clusterTag)
 			}
 
 			mgmtv3.ClusterConditionMonitoringEnabled.False(cluster)
@@ -237,17 +237,17 @@ func (ah *appHandler) deployEtcdCert(clusterName string) ([]*etcdTLSConfig, erro
 	systemNamespace := "cattle-system"
 	sec, err := ah.cattleMgmtSecretLister.Get(systemNamespace, rkeCertSecretName)
 	if err != nil {
-		return nil, errors.Annotatef(err, "failed to get %s:%s in deploy etcd cert to prometheus", systemNamespace, rkeCertSecretName)
+		return nil, errors.Wrapf(err, "failed to get %s:%s in deploy etcd cert to prometheus", systemNamespace, rkeCertSecretName)
 	}
 
 	var data kcluster.Cluster
 	if err = json.Unmarshal(sec.Data["cluster"], &data); err != nil {
-		return nil, errors.Annotatef(err, "failed to decode secret %s:%s to get etcd cert", systemNamespace, rkeCertSecretName)
+		return nil, errors.Wrapf(err, "failed to decode secret %s:%s to get etcd cert", systemNamespace, rkeCertSecretName)
 	}
 
 	crts := make(map[string]map[string]string)
 	if err = json.Unmarshal([]byte(data.Metadata["Certs"]), &crts); err != nil {
-		return nil, errors.Annotatef(err, "failed to decode secret %s:%s cert data to get etcd cert", systemNamespace, rkeCertSecretName)
+		return nil, errors.Wrapf(err, "failed to decode secret %s:%s cert data to get etcd cert", systemNamespace, rkeCertSecretName)
 	}
 
 	secretData := make(map[string][]byte)
@@ -303,7 +303,7 @@ func (ah *appHandler) getExporterEndpoint() (map[string][]string, error) {
 
 	etcdNodes, err := ah.agentNodeLister.List(metav1.NamespaceAll, etcdLablels.AsSelector())
 	if err != nil {
-		return nil, errors.Annotate(err, "failed to get etcd nodes")
+		return nil, errors.Wrap(err, "failed to get etcd nodes")
 	}
 	for _, v := range etcdNodes {
 		endpointMap[etcd] = append(endpointMap[etcd], nodeutil.GetNodeInternalAddress(v))
@@ -311,7 +311,7 @@ func (ah *appHandler) getExporterEndpoint() (map[string][]string, error) {
 
 	controlplaneNodes, err := ah.agentNodeLister.List(metav1.NamespaceAll, controlplaneLabels.AsSelector())
 	if err != nil {
-		return nil, errors.Annotate(err, "failed to get controlplane nodes")
+		return nil, errors.Wrap(err, "failed to get controlplane nodes")
 	}
 	for _, v := range controlplaneNodes {
 		endpointMap[controlplane] = append(endpointMap[controlplane], nodeutil.GetNodeInternalAddress(v))
@@ -324,7 +324,7 @@ func (ah *appHandler) ensureClusterMonitoringProjectName(appTargetNamespace stri
 	// detect Namespace
 	deployNamespace, err := ah.agentNamespacesClient.Get(appTargetNamespace, metav1.GetOptions{})
 	if err != nil && !k8serrors.IsNotFound(err) {
-		return "", errors.Annotatef(err, "failed to find %q Namespace", appTargetNamespace)
+		return "", errors.Wrapf(err, "failed to find %q Namespace", appTargetNamespace)
 	}
 	deployNamespace = deployNamespace.DeepCopy()
 
@@ -333,7 +333,7 @@ func (ah *appHandler) ensureClusterMonitoringProjectName(appTargetNamespace stri
 			return "", errors.New(fmt.Sprintf("stale %q Namespace is still on terminating", appTargetNamespace))
 		}
 	} else {
-		return "", errors.Annotatef(err, "failed to find %q Namespace", appTargetNamespace)
+		return "", errors.Wrapf(err, "failed to find %q Namespace", appTargetNamespace)
 	}
 
 	appProjectName := ""
@@ -352,7 +352,7 @@ func (ah *appHandler) ensureClusterMonitoringProjectName(appTargetNamespace stri
 		deployNamespace.Labels[monitoring.CattleMonitoringLabelKey] = "true"
 
 		if _, err := ah.agentNamespacesClient.Update(deployNamespace); err != nil {
-			return "", errors.Annotatef(err, "failed to mark Namespace %s as monitoring owned", appTargetNamespace)
+			return "", errors.Wrapf(err, "failed to mark Namespace %s as monitoring owned", appTargetNamespace)
 		}
 	}
 
@@ -370,7 +370,7 @@ func (ah *appHandler) grantClusterMonitoringRBAC(appName, appTargetNamespace str
 		func() error {
 			appServiceAccount, err := ah.agentServiceAccountGetter.ServiceAccounts(appTargetNamespace).Get(appServiceAccountName, metav1.GetOptions{})
 			if err != nil && !k8serrors.IsNotFound(err) {
-				return errors.Annotatef(err, "failed to query %q ServiceAccount in %q Namespace", appServiceAccountName, appTargetNamespace)
+				return errors.Wrapf(err, "failed to query %q ServiceAccount in %q Namespace", appServiceAccountName, appTargetNamespace)
 			}
 			if appServiceAccount.Name == appServiceAccountName {
 				if appServiceAccount.DeletionTimestamp != nil {
@@ -386,7 +386,7 @@ func (ah *appHandler) grantClusterMonitoringRBAC(appName, appTargetNamespace str
 				}
 
 				if _, err := ah.agentServiceAccountGetter.ServiceAccounts(appTargetNamespace).Create(appServiceAccount); err != nil && !k8serrors.IsAlreadyExists(err) {
-					return errors.Annotatef(err, "failed to create %q ServiceAccount in %q Namespace", appServiceAccountName, appTargetNamespace)
+					return errors.Wrapf(err, "failed to create %q ServiceAccount in %q Namespace", appServiceAccountName, appTargetNamespace)
 				}
 			}
 
@@ -397,7 +397,7 @@ func (ah *appHandler) grantClusterMonitoringRBAC(appName, appTargetNamespace str
 		func() error {
 			appClusterRole, err := ah.agentRBACClient.ClusterRoles(metav1.NamespaceAll).Get(appClusterRoleName, metav1.GetOptions{})
 			if err != nil && !k8serrors.IsNotFound(err) {
-				return errors.Annotatef(err, "failed to query %q ClusterRole", appClusterRoleName)
+				return errors.Wrapf(err, "failed to query %q ClusterRole", appClusterRoleName)
 			}
 
 			rules := []k8srbacv1.PolicyRule{
@@ -474,7 +474,7 @@ func (ah *appHandler) grantClusterMonitoringRBAC(appName, appTargetNamespace str
 				appClusterRole = appClusterRole.DeepCopy()
 				appClusterRole.Rules = rules
 				if _, err := ah.agentRBACClient.ClusterRoles(metav1.NamespaceAll).Update(appClusterRole); err != nil {
-					return errors.Annotatef(err, "failed to update %q ClusterRole", appClusterRoleName)
+					return errors.Wrapf(err, "failed to update %q ClusterRole", appClusterRoleName)
 				}
 			} else {
 				appClusterRole = &k8srbacv1.ClusterRole{
@@ -486,7 +486,7 @@ func (ah *appHandler) grantClusterMonitoringRBAC(appName, appTargetNamespace str
 				}
 
 				if _, err := ah.agentRBACClient.ClusterRoles(metav1.NamespaceAll).Create(appClusterRole); err != nil && !k8serrors.IsAlreadyExists(err) {
-					return errors.Annotatef(err, "failed to create %q ClusterRole", appClusterRoleName)
+					return errors.Wrapf(err, "failed to create %q ClusterRole", appClusterRoleName)
 				}
 			}
 
@@ -497,7 +497,7 @@ func (ah *appHandler) grantClusterMonitoringRBAC(appName, appTargetNamespace str
 		func() error {
 			appClusterRoleBinding, err := ah.agentRBACClient.ClusterRoleBindings(metav1.NamespaceAll).Get(appClusterRoleBindingName, metav1.GetOptions{})
 			if err != nil && !k8serrors.IsNotFound(err) {
-				return errors.Annotatef(err, "failed to query %q ClusterRoleBinding", appClusterRoleBindingName)
+				return errors.Wrapf(err, "failed to query %q ClusterRoleBinding", appClusterRoleBindingName)
 			}
 			if appClusterRoleBinding.Name == appClusterRoleBindingName {
 				if appClusterRoleBinding.DeletionTimestamp != nil {
@@ -524,7 +524,7 @@ func (ah *appHandler) grantClusterMonitoringRBAC(appName, appTargetNamespace str
 				}
 
 				if _, err := ah.agentRBACClient.ClusterRoleBindings(metav1.NamespaceAll).Create(appClusterRoleBinding); err != nil && !k8serrors.IsAlreadyExists(err) {
-					return errors.Annotatef(err, "failed to create %q ClusterRoleBinding", appClusterRoleBindingName)
+					return errors.Wrapf(err, "failed to create %q ClusterRoleBinding", appClusterRoleBindingName)
 				}
 			}
 
@@ -545,7 +545,7 @@ func (ah *appHandler) deployClusterMonitoring(appName, appTargetNamespace string
 	// detect App "cluster-monitoring"
 	app, err := ah.cattleAppsGetter.Apps(projectID).Get(appName, metav1.GetOptions{})
 	if err != nil && !k8serrors.IsNotFound(err) {
-		return errors.Annotatef(err, "failed to query %q App in %s Project", appName, projectID)
+		return errors.Wrapf(err, "failed to query %q App in %s Project", appName, projectID)
 	}
 	if app.Name == appName {
 		if app.DeletionTimestamp != nil {
@@ -559,10 +559,10 @@ func (ah *appHandler) deployClusterMonitoring(appName, appTargetNamespace string
 	appCatalogID := settings.SystemMonitoringCatalogID.Get()
 	templateVersionID, err := common.ParseExternalID(appCatalogID)
 	if err != nil {
-		return errors.Annotatef(err, "failed to parse catalog ID %q", appCatalogID)
+		return errors.Wrapf(err, "failed to parse catalog ID %q", appCatalogID)
 	}
 	if _, err := ah.cattleTemplateVersionClient.Get(templateVersionID, metav1.GetOptions{}); err != nil {
-		return errors.Annotatef(err, "failed to find catalog by ID %q", appCatalogID)
+		return errors.Wrapf(err, "failed to find catalog by ID %q", appCatalogID)
 	}
 
 	_, _, port := monitoring.ClusterPrometheusEndpoint()
@@ -701,7 +701,7 @@ func (ah *appHandler) deployClusterMonitoring(appName, appTargetNamespace string
 	}
 
 	if _, err := ah.cattleAppsGetter.Apps(projectID).Create(app); err != nil && !k8serrors.IsAlreadyExists(err) {
-		return errors.Annotatef(err, "failed to create %q App", appName)
+		return errors.Wrapf(err, "failed to create %q App", appName)
 	}
 
 	return nil
@@ -733,14 +733,14 @@ func (ah *appHandler) withdrawMonitoring(appName, appTargetNamespace string) err
 			return nil
 		}
 
-		return errors.Annotatef(err, "failed to find %q App in all Namespaces", appName)
+		return errors.Wrapf(err, "failed to find %q App in all Namespaces", appName)
 	}
 
 	monitoringApps = monitoringApps.DeepCopy()
 	for _, app := range monitoringApps.Items {
 		if app.DeletionTimestamp == nil {
 			if err := ah.cattleAppsGetter.Apps(app.Namespace).Delete(app.Name, &metav1.DeleteOptions{}); err != nil {
-				return errors.Annotatef(err, "failed to remove %q App in %s Namespace", app.Name, app.Namespace)
+				return errors.Wrapf(err, "failed to remove %q App in %s Namespace", app.Name, app.Namespace)
 			}
 		}
 

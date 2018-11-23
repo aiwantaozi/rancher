@@ -1,10 +1,10 @@
 package monitoring
 
 import (
+	"errors"
 	"regexp"
 	"time"
 
-	"github.com/juju/errors"
 	ncondition "github.com/rancher/norman/condition"
 	"github.com/rancher/norman/controller"
 	mgmtv3 "github.com/rancher/types/apis/management.cattle.io/v3"

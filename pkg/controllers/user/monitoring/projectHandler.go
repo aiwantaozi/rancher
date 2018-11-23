@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 	"github.com/rancher/rancher/pkg/controllers/user/helm/common"
 	"github.com/rancher/rancher/pkg/monitoring"
 	"github.com/rancher/rancher/pkg/settings"
@@ -37,7 +37,7 @@ func (ph *projectHandler) sync(key string, project *mgmtv3.Project) (runtime.Obj
 
 	_, err := ph.cattleClustersClient.Get(project.Spec.ClusterName, metav1.GetOptions{})
 	if err != nil {
-		return project, errors.Annotatef(err, "failed to find Cluster %s", project.Spec.ClusterName)
+		return project, errors.Wrapf(err, "failed to find Cluster %s", project.Spec.ClusterName)
 	}
 
 	if project.Spec.EnableProjectMonitoring == nil {
@@ -53,7 +53,7 @@ func (ph *projectHandler) sync(key string, project *mgmtv3.Project) (runtime.Obj
 	if !reflect.DeepEqual(cpy, src) {
 		_, err := ph.cattleProjectsClient.Update(cpy)
 		if err != nil {
-			return project, errors.Annotatef(err, "failed to update Project %s in Cluster %s", projectTag, project.Spec.ClusterName)
+			return project, errors.Wrapf(err, "failed to update Project %s in Cluster %s", projectTag, project.Spec.ClusterName)
 		}
 	}
 
@@ -70,26 +70,26 @@ func (ph *projectHandler) doSync(projectTag string, project *mgmtv3.Project) err
 			if err != nil {
 				mgmtv3.ProjectConditionMonitoringEnabled.Unknown(project)
 				mgmtv3.ProjectConditionMonitoringEnabled.Message(project, err.Error())
-				return errors.Annotatef(err, "failed to ensure monitoring project name for Project %s", projectTag)
+				return errors.Wrapf(err, "failed to ensure monitoring project name for Project %s", projectTag)
 			}
 
 			deployServiceAccountName, err := ph.app.grantProjectMonitoringRBAC(appName, appTargetNamespace, project)
 			if err != nil {
 				mgmtv3.ProjectConditionMonitoringEnabled.Unknown(project)
 				mgmtv3.ProjectConditionMonitoringEnabled.Message(project, err.Error())
-				return errors.Annotatef(err, "failed to grant prometheus RBAC into Project %s", projectTag)
+				return errors.Wrapf(err, "failed to grant prometheus RBAC into Project %s", projectTag)
 			}
 
 			if err := ph.app.deployProjectMonitoring(appName, appTargetNamespace, deployServiceAccountName, appProjectName, project); err != nil {
 				mgmtv3.ProjectConditionMonitoringEnabled.Unknown(project)
 				mgmtv3.ProjectConditionMonitoringEnabled.Message(project, err.Error())
-				return errors.Annotatef(err, "failed to deploy monitoring into Project %s", projectTag)
+				return errors.Wrapf(err, "failed to deploy monitoring into Project %s", projectTag)
 			}
 
 			if err := ph.detectMonitoringComponentsWhileInstall(appName, appTargetNamespace, project); err != nil {
 				mgmtv3.ProjectConditionMonitoringEnabled.Unknown(project)
 				mgmtv3.ProjectConditionMonitoringEnabled.Message(project, err.Error())
-				return errors.Annotatef(err, "failed to detect the installation status of monitoring components in Project %s", projectTag)
+				return errors.Wrapf(err, "failed to detect the installation status of monitoring components in Project %s", projectTag)
 			}
 
 			mgmtv3.ProjectConditionMonitoringEnabled.True(project)
@@ -107,19 +107,19 @@ func (ph *projectHandler) doSync(projectTag string, project *mgmtv3.Project) err
 			if err := ph.app.withdrawMonitoring(appName, appTargetNamespace); err != nil {
 				mgmtv3.ProjectConditionMonitoringEnabled.Unknown(project)
 				mgmtv3.ProjectConditionMonitoringEnabled.Message(project, err.Error())
-				return errors.Annotatef(err, "failed to withdraw monitoring from Project %s", projectTag)
+				return errors.Wrapf(err, "failed to withdraw monitoring from Project %s", projectTag)
 			}
 
 			if err := ph.detectMonitoringComponentsWhileUninstall(appName, appTargetNamespace, project); err != nil {
 				mgmtv3.ProjectConditionMonitoringEnabled.Unknown(project)
 				mgmtv3.ProjectConditionMonitoringEnabled.Message(project, err.Error())
-				return errors.Annotatef(err, "failed to detect the uninstallation status of monitoring components in Project %s", projectTag)
+				return errors.Wrapf(err, "failed to detect the uninstallation status of monitoring components in Project %s", projectTag)
 			}
 
 			if err := ph.app.revokeProjectMonitoringRBAC(appName, appTargetNamespace, project); err != nil {
 				mgmtv3.ProjectConditionMonitoringEnabled.Unknown(project)
 				mgmtv3.ProjectConditionMonitoringEnabled.Message(project, err.Error())
-				return errors.Annotatef(err, "failed to revoke prometheus RBAC from Project %s", projectTag)
+				return errors.Wrapf(err, "failed to revoke prometheus RBAC from Project %s", projectTag)
 			}
 
 			mgmtv3.ProjectConditionMonitoringEnabled.False(project)
@@ -171,7 +171,7 @@ func (ah *appHandler) ensureProjectMonitoringProjectName(appTargetNamespace stri
 	// detect Namespace
 	deployNamespace, err := ah.agentNamespacesClient.Get(appTargetNamespace, metav1.GetOptions{})
 	if err != nil && !k8serrors.IsNotFound(err) {
-		return "", errors.Annotatef(err, "failed to find %q Namespace", appTargetNamespace)
+		return "", errors.Wrapf(err, "failed to find %q Namespace", appTargetNamespace)
 	}
 	deployNamespace = deployNamespace.DeepCopy()
 
@@ -187,7 +187,7 @@ func (ah *appHandler) ensureProjectMonitoringProjectName(appTargetNamespace stri
 		}
 
 		if deployNamespace, err = ah.agentNamespacesClient.Create(deployNamespace); err != nil && !k8serrors.IsAlreadyExists(err) {
-			return "", errors.Annotatef(err, "failed to create %q Namespace", appTargetNamespace)
+			return "", errors.Wrapf(err, "failed to create %q Namespace", appTargetNamespace)
 		}
 	}
 
@@ -210,7 +210,7 @@ func (ah *appHandler) ensureProjectMonitoringProjectName(appTargetNamespace stri
 
 		_, err := ah.agentNamespacesClient.Update(deployNamespace)
 		if err != nil {
-			return "", errors.Annotatef(err, "failed to move Namespace %s to Project %s", appTargetNamespace, project.Spec.DisplayName)
+			return "", errors.Wrapf(err, "failed to move Namespace %s to Project %s", appTargetNamespace, project.Spec.DisplayName)
 		}
 	}
 
@@ -222,7 +222,7 @@ func (ah *appHandler) ensureProjectMonitoringProjectName(appTargetNamespace stri
 		deployNamespace.Labels[monitoring.CattleMonitoringLabelKey] = "true"
 
 		if _, err := ah.agentNamespacesClient.Update(deployNamespace); err != nil {
-			return "", errors.Annotatef(err, "failed to mark Namespace %s as monitoring owned", appTargetNamespace)
+			return "", errors.Wrapf(err, "failed to mark Namespace %s as monitoring owned", appTargetNamespace)
 		}
 	}
 
@@ -240,7 +240,7 @@ func (ah *appHandler) grantProjectMonitoringRBAC(appName, appTargetNamespace str
 		func() error {
 			appServiceAccount, err := ah.agentServiceAccountGetter.ServiceAccounts(appTargetNamespace).Get(appServiceAccountName, metav1.GetOptions{})
 			if err != nil && !k8serrors.IsNotFound(err) {
-				return errors.Annotatef(err, "failed to query %q ServiceAccount in %q Namespace", appServiceAccountName, appTargetNamespace)
+				return errors.Wrapf(err, "failed to query %q ServiceAccount in %q Namespace", appServiceAccountName, appTargetNamespace)
 			}
 			if appServiceAccount.Name == appServiceAccountName {
 				if appServiceAccount.DeletionTimestamp != nil {
@@ -256,7 +256,7 @@ func (ah *appHandler) grantProjectMonitoringRBAC(appName, appTargetNamespace str
 				}
 
 				if _, err := ah.agentServiceAccountGetter.ServiceAccounts(appTargetNamespace).Create(appServiceAccount); err != nil && !k8serrors.IsAlreadyExists(err) {
-					return errors.Annotatef(err, "failed to create %q ServiceAccount in %q Namespace", appServiceAccountName, appTargetNamespace)
+					return errors.Wrapf(err, "failed to create %q ServiceAccount in %q Namespace", appServiceAccountName, appTargetNamespace)
 				}
 			}
 
@@ -267,7 +267,7 @@ func (ah *appHandler) grantProjectMonitoringRBAC(appName, appTargetNamespace str
 		func() error {
 			appClusterRoleBinding, err := ah.agentRBACClient.ClusterRoleBindings(metav1.NamespaceAll).Get(appClusterRoleBindingName, metav1.GetOptions{})
 			if err != nil && !k8serrors.IsNotFound(err) {
-				return errors.Annotatef(err, "failed to query %q ClusterRoleBinding", appClusterRoleBindingName)
+				return errors.Wrapf(err, "failed to query %q ClusterRoleBinding", appClusterRoleBindingName)
 			}
 			if appClusterRoleBinding.Name == appClusterRoleBindingName {
 				if appClusterRoleBinding.DeletionTimestamp != nil {
@@ -294,7 +294,7 @@ func (ah *appHandler) grantProjectMonitoringRBAC(appName, appTargetNamespace str
 				}
 
 				if _, err := ah.agentRBACClient.ClusterRoleBindings(metav1.NamespaceAll).Create(appClusterRoleBinding); err != nil && !k8serrors.IsAlreadyExists(err) {
-					return errors.Annotatef(err, "failed to create %q ClusterRoleBinding", appClusterRoleBindingName)
+					return errors.Wrapf(err, "failed to create %q ClusterRoleBinding", appClusterRoleBindingName)
 				}
 			}
 
@@ -315,7 +315,7 @@ func (ah *appHandler) deployProjectMonitoring(appName, appTargetNamespace string
 	// detect App "project-monitoring"
 	app, err := ah.cattleAppsGetter.Apps(projectID).Get(appName, metav1.GetOptions{})
 	if err != nil && !k8serrors.IsNotFound(err) {
-		return errors.Annotatef(err, "failed to query %q App in %s", appName, projectID)
+		return errors.Wrapf(err, "failed to query %q App in %s", appName, projectID)
 	}
 	if app.Name == appName {
 		if app.DeletionTimestamp != nil {
@@ -329,10 +329,10 @@ func (ah *appHandler) deployProjectMonitoring(appName, appTargetNamespace string
 	catalogID := settings.SystemMonitoringCatalogID.Get()
 	templateVersionID, err := common.ParseExternalID(catalogID)
 	if err != nil {
-		return errors.Annotatef(err, "failed to parse catalog ID %q", catalogID)
+		return errors.Wrapf(err, "failed to parse catalog ID %q", catalogID)
 	}
 	if _, err := ah.cattleTemplateVersionClient.Get(templateVersionID, metav1.GetOptions{}); err != nil {
-		return errors.Annotatef(err, "failed to find catalog by ID %q", catalogID)
+		return errors.Wrapf(err, "failed to find catalog by ID %q", catalogID)
 	}
 
 	clusterPrometheusSvcName, clusterPrometheusSvcNamespace, clusterPrometheusPort := monitoring.ClusterPrometheusEndpoint()
@@ -364,7 +364,7 @@ func (ah *appHandler) deployProjectMonitoring(appName, appTargetNamespace string
 	}
 
 	if _, err := ah.cattleAppsGetter.Apps(projectID).Create(app); err != nil && !k8serrors.IsAlreadyExists(err) {
-		return errors.Annotatef(err, "failed to create %q App", appName)
+		return errors.Wrapf(err, "failed to create %q App", appName)
 	}
 
 	return nil
