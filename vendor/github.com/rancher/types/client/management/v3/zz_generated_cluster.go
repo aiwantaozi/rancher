@@ -28,6 +28,7 @@ const (
 	ClusterFieldDesiredAgentImage                    = "desiredAgentImage"
 	ClusterFieldDockerRootDir                        = "dockerRootDir"
 	ClusterFieldDriver                               = "driver"
+	ClusterFieldEnableClusterMonitoring              = "enableClusterMonitoring"
 	ClusterFieldEnableNetworkPolicy                  = "enableNetworkPolicy"
 	ClusterFieldFailedSpec                           = "failedSpec"
 	ClusterFieldGoogleKubernetesEngineConfig         = "googleKubernetesEngineConfig"
@@ -35,6 +36,7 @@ const (
 	ClusterFieldInternal                             = "internal"
 	ClusterFieldLabels                               = "labels"
 	ClusterFieldLimits                               = "limits"
+	ClusterFieldMonitoringStatus                     = "monitoringStatus"
 	ClusterFieldName                                 = "name"
 	ClusterFieldOwnerReferences                      = "ownerReferences"
 	ClusterFieldRancherKubernetesEngineConfig        = "rancherKubernetesEngineConfig"
@@ -71,6 +73,7 @@ type Cluster struct {
 	DesiredAgentImage                    string                               `json:"desiredAgentImage,omitempty" yaml:"desiredAgentImage,omitempty"`
 	DockerRootDir                        string                               `json:"dockerRootDir,omitempty" yaml:"dockerRootDir,omitempty"`
 	Driver                               string                               `json:"driver,omitempty" yaml:"driver,omitempty"`
+	EnableClusterMonitoring              *bool                                `json:"enableClusterMonitoring,omitempty" yaml:"enableClusterMonitoring,omitempty"`
 	EnableNetworkPolicy                  *bool                                `json:"enableNetworkPolicy,omitempty" yaml:"enableNetworkPolicy,omitempty"`
 	FailedSpec                           *ClusterSpec                         `json:"failedSpec,omitempty" yaml:"failedSpec,omitempty"`
 	GoogleKubernetesEngineConfig         *GoogleKubernetesEngineConfig        `json:"googleKubernetesEngineConfig,omitempty" yaml:"googleKubernetesEngineConfig,omitempty"`
@@ -78,6 +81,7 @@ type Cluster struct {
 	Internal                             bool                                 `json:"internal,omitempty" yaml:"internal,omitempty"`
 	Labels                               map[string]string                    `json:"labels,omitempty" yaml:"labels,omitempty"`
 	Limits                               map[string]string                    `json:"limits,omitempty" yaml:"limits,omitempty"`
+	MonitoringStatus                     *MonitoringStatus                    `json:"monitoringStatus,omitempty" yaml:"monitoringStatus,omitempty"`
 	Name                                 string                               `json:"name,omitempty" yaml:"name,omitempty"`
 	OwnerReferences                      []OwnerReference                     `json:"ownerReferences,omitempty" yaml:"ownerReferences,omitempty"`
 	RancherKubernetesEngineConfig        *RancherKubernetesEngineConfig       `json:"rancherKubernetesEngineConfig,omitempty" yaml:"rancherKubernetesEngineConfig,omitempty"`

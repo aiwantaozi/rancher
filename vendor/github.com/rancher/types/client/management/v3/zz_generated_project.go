@@ -12,7 +12,9 @@ const (
 	ProjectFieldCreated                       = "created"
 	ProjectFieldCreatorID                     = "creatorId"
 	ProjectFieldDescription                   = "description"
+	ProjectFieldEnableProjectMonitoring       = "enableProjectMonitoring"
 	ProjectFieldLabels                        = "labels"
+	ProjectFieldMonitoringStatus              = "monitoringStatus"
 	ProjectFieldName                          = "name"
 	ProjectFieldNamespaceDefaultResourceQuota = "namespaceDefaultResourceQuota"
 	ProjectFieldNamespaceId                   = "namespaceId"
@@ -34,7 +36,9 @@ type Project struct {
 	Created                       string                  `json:"created,omitempty" yaml:"created,omitempty"`
 	CreatorID                     string                  `json:"creatorId,omitempty" yaml:"creatorId,omitempty"`
 	Description                   string                  `json:"description,omitempty" yaml:"description,omitempty"`
+	EnableProjectMonitoring       *bool                   `json:"enableProjectMonitoring,omitempty" yaml:"enableProjectMonitoring,omitempty"`
 	Labels                        map[string]string       `json:"labels,omitempty" yaml:"labels,omitempty"`
+	MonitoringStatus              *MonitoringStatus       `json:"monitoringStatus,omitempty" yaml:"monitoringStatus,omitempty"`
 	Name                          string                  `json:"name,omitempty" yaml:"name,omitempty"`
 	NamespaceDefaultResourceQuota *NamespaceResourceQuota `json:"namespaceDefaultResourceQuota,omitempty" yaml:"namespaceDefaultResourceQuota,omitempty"`
 	NamespaceId                   string                  `json:"namespaceId,omitempty" yaml:"namespaceId,omitempty"`

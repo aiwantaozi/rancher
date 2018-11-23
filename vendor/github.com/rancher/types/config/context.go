@@ -12,11 +12,13 @@ import (
 	appsv1beta2 "github.com/rancher/types/apis/apps/v1beta2"
 	batchv1 "github.com/rancher/types/apis/batch/v1"
 	batchv1beta1 "github.com/rancher/types/apis/batch/v1beta1"
+	clusterv3 "github.com/rancher/types/apis/cluster.cattle.io/v3"
 	clusterSchema "github.com/rancher/types/apis/cluster.cattle.io/v3/schema"
 	corev1 "github.com/rancher/types/apis/core/v1"
 	extv1beta1 "github.com/rancher/types/apis/extensions/v1beta1"
 	managementv3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	managementSchema "github.com/rancher/types/apis/management.cattle.io/v3/schema"
+	monitoringv1 "github.com/rancher/types/apis/monitoring.coreos.com/v1"
 	knetworkingv1 "github.com/rancher/types/apis/networking.k8s.io/v1"
 	projectv3 "github.com/rancher/types/apis/project.cattle.io/v3"
 	projectSchema "github.com/rancher/types/apis/project.cattle.io/v3/schema"
@@ -129,7 +131,6 @@ func NewScaledContext(config rest.Config) (*ScaledContext, error) {
 		AddSchemas(managementSchema.Schemas).
 		AddSchemas(clusterSchema.Schemas).
 		AddSchemas(projectSchema.Schemas)
-
 	return context, err
 }
 
@@ -181,6 +182,8 @@ type UserContext struct {
 	BatchV1      batchv1.Interface
 	BatchV1Beta1 batchv1beta1.Interface
 	Networking   knetworkingv1.Interface
+	Monitoring   monitoringv1.Interface
+	ClusterV3    clusterv3.Interface
 }
 
 func (w *UserContext) controllers() []controller.Starter {
@@ -193,6 +196,7 @@ func (w *UserContext) controllers() []controller.Starter {
 		w.BatchV1,
 		w.BatchV1Beta1,
 		w.Networking,
+		w.Monitoring,
 	}
 }
 
@@ -211,6 +215,8 @@ func (w *UserContext) UserOnlyContext() *UserOnlyContext {
 		Extensions:   w.Extensions,
 		BatchV1:      w.BatchV1,
 		BatchV1Beta1: w.BatchV1Beta1,
+		Monitoring:   w.Monitoring,
+		ClusterV3:    w.ClusterV3,
 	}
 }
 
@@ -228,6 +234,8 @@ type UserOnlyContext struct {
 	Extensions   extv1beta1.Interface
 	BatchV1      batchv1.Interface
 	BatchV1Beta1 batchv1beta1.Interface
+	Monitoring   monitoringv1.Interface
+	ClusterV3    clusterv3.Interface
 }
 
 func (w *UserOnlyContext) controllers() []controller.Starter {
@@ -239,6 +247,8 @@ func (w *UserOnlyContext) controllers() []controller.Starter {
 		w.Extensions,
 		w.BatchV1,
 		w.BatchV1Beta1,
+		w.Monitoring,
+		w.ClusterV3,
 	}
 }
 
@@ -371,6 +381,16 @@ func NewUserContext(scaledContext *ScaledContext, config rest.Config, clusterNam
 	}
 
 	context.BatchV1Beta1, err = batchv1beta1.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	context.Monitoring, err = monitoringv1.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	context.ClusterV3, err = clusterv3.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}

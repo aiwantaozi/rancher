@@ -39,8 +39,10 @@ type Config struct {
 	ListenConfigs                            map[string]managementClient.ListenConfig                            `json:"listenConfigs,omitempty" yaml:"listenConfigs,omitempty"`
 	Settings                                 map[string]managementClient.Setting                                 `json:"settings,omitempty" yaml:"settings,omitempty"`
 	Notifiers                                map[string]managementClient.Notifier                                `json:"notifiers,omitempty" yaml:"notifiers,omitempty"`
-	ClusterAlerts                            map[string]managementClient.ClusterAlert                            `json:"clusterAlerts,omitempty" yaml:"clusterAlerts,omitempty"`
-	ProjectAlerts                            map[string]managementClient.ProjectAlert                            `json:"projectAlerts,omitempty" yaml:"projectAlerts,omitempty"`
+	ClusterAlertRules                        map[string]managementClient.ClusterAlertRule                        `json:"clusterAlertRules,omitempty" yaml:"clusterAlertRules,omitempty"`
+	ClusterAlertGroups                       map[string]managementClient.ClusterAlertGroup                       `json:"clusterAlertGroups,omitempty" yaml:"clusterAlertGroups,omitempty"`
+	ProjectAlertRules                        map[string]managementClient.ProjectAlertRule                        `json:"projectAlertRules,omitempty" yaml:"projectAlertRules,omitempty"`
+	ProjectAlertGroups                       map[string]managementClient.ProjectAlertGroup                       `json:"projectAlertGroups,omitempty" yaml:"projectAlertGroups,omitempty"`
 	ComposeConfigs                           map[string]managementClient.ComposeConfig                           `json:"composeConfigs,omitempty" yaml:"composeConfigs,omitempty"`
 	ProjectCatalogs                          map[string]managementClient.ProjectCatalog                          `json:"projectCatalogs,omitempty" yaml:"projectCatalogs,omitempty"`
 	ClusterCatalogs                          map[string]managementClient.ClusterCatalog                          `json:"clusterCatalogs,omitempty" yaml:"clusterCatalogs,omitempty"`
@@ -49,6 +51,8 @@ type Config struct {
 	Namespaces        map[string]clusterClient.Namespace        `json:"namespaces,omitempty" yaml:"namespaces,omitempty"`
 	PersistentVolumes map[string]clusterClient.PersistentVolume `json:"persistentVolumes,omitempty" yaml:"persistentVolumes,omitempty"`
 	StorageClasss     map[string]clusterClient.StorageClass     `json:"storageClasses,omitempty" yaml:"storageClasses,omitempty"`
+	MonitorMetrics    map[string]clusterClient.MonitorMetric    `json:"monitorMetrics,omitempty" yaml:"monitorMetrics,omitempty"`
+	MonitorGraphs     map[string]clusterClient.MonitorGraph     `json:"monitorGraphs,omitempty" yaml:"monitorGraphs,omitempty"`
 
 	// Project Client
 	PersistentVolumeClaims         map[string]projectClient.PersistentVolumeClaim         `json:"persistentVolumeClaims,omitempty" yaml:"persistentVolumeClaims,omitempty"`
@@ -86,4 +90,8 @@ type Config struct {
 	PipelineExecutions             map[string]projectClient.PipelineExecution             `json:"pipelineExecutions,omitempty" yaml:"pipelineExecutions,omitempty"`
 	PipelineSettings               map[string]projectClient.PipelineSetting               `json:"pipelineSettings,omitempty" yaml:"pipelineSettings,omitempty"`
 	SourceCodeRepositorys          map[string]projectClient.SourceCodeRepository          `json:"sourceCodeRepositories,omitempty" yaml:"sourceCodeRepositories,omitempty"`
+	Prometheuss                    map[string]projectClient.Prometheus                    `json:"prometheuses,omitempty" yaml:"prometheuses,omitempty"`
+	ServiceMonitors                map[string]projectClient.ServiceMonitor                `json:"serviceMonitors,omitempty" yaml:"serviceMonitors,omitempty"`
+	PrometheusRules                map[string]projectClient.PrometheusRule                `json:"prometheusRules,omitempty" yaml:"prometheusRules,omitempty"`
+	Alertmanagers                  map[string]projectClient.Alertmanager                  `json:"alertmanagers,omitempty" yaml:"alertmanagers,omitempty"`
 }

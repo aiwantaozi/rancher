@@ -5,7 +5,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type ClusterAlert struct {
+type ClusterAlertGroup struct {
 	types.Namespaced
 
 	metav1.TypeMeta `json:",inline"`
@@ -13,13 +13,13 @@ type ClusterAlert struct {
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#metadata
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec ClusterAlertSpec `json:"spec"`
+	Spec ClusterGroupSpec `json:"spec"`
 	// Most recent observed status of the alert. More info:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#spec-and-status
-	Status AlertStatus `json:"status"`
+	Status Status `json:"status"`
 }
 
-type ProjectAlert struct {
+type ProjectAlertGroup struct {
 	types.Namespaced
 
 	metav1.TypeMeta `json:",inline"`
@@ -27,36 +27,103 @@ type ProjectAlert struct {
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#metadata
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec ProjectAlertSpec `json:"spec"`
+	Spec ProjectGroupSpec `json:"spec"`
 	// Most recent observed status of the alert. More info:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#spec-and-status
-	Status AlertStatus `json:"status"`
+	Status Status `json:"status"`
 }
 
-type AlertCommonSpec struct {
-	DisplayName           string      `json:"displayName,omitempty" norman:"required"`
-	Description           string      `json:"description,omitempty"`
-	Severity              string      `json:"severity,omitempty" norman:"required,options=info|critical|warning,default=critical"`
-	Recipients            []Recipient `json:"recipients,omitempty" norman:"required"`
-	InitialWaitSeconds    int         `json:"initialWaitSeconds,omitempty" norman:"required,default=180,min=0"`
-	RepeatIntervalSeconds int         `json:"repeatIntervalSeconds,omitempty"  norman:"required,default=3600,min=0"`
+type ClusterGroupSpec struct {
+	ClusterName  string             `json:"clusterName" norman:"type=reference[cluster]"`
+	ClusterRules []ClusterAlertRule `json:"clusterRules" norman:"required"`
+	Recipients   []Recipient        `json:"recipients,omitempty" norman:"required"`
+	CommonGroupField
 }
 
-type ClusterAlertSpec struct {
-	AlertCommonSpec
-
-	ClusterName         string               `json:"clusterName" norman:"type=reference[cluster]"`
-	TargetNode          *TargetNode          `json:"targetNode,omitempty"`
-	TargetSystemService *TargetSystemService `json:"targetSystemService,omitempty"`
-	TargetEvent         *TargetEvent         `json:"targetEvent,omitempty"`
+type ProjectGroupSpec struct {
+	ProjectName  string             `json:"projectName" norman:"type=reference[project]"`
+	ProjectRules []ProjectAlertRule `json:"projectRule" norman:"required"`
+	Recipients   []Recipient        `json:"recipients,omitempty" norman:"required"`
+	CommonGroupField
 }
 
-type ProjectAlertSpec struct {
-	AlertCommonSpec
+type ClusterAlertRule struct {
+	types.Namespaced
 
-	ProjectName    string          `json:"projectName" norman:"type=reference[project]"`
-	TargetWorkload *TargetWorkload `json:"targetWorkload,omitempty"`
-	TargetPod      *TargetPod      `json:"targetPod,omitempty"`
+	metav1.TypeMeta `json:",inline"`
+	// Standard object’s metadata. More info:
+	// https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#metadata
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec ClusterAlertRuleSpec `json:"spec"`
+	// Most recent observed status of the alert. More info:
+	// https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#spec-and-status
+	Status Status `json:"status"`
+}
+
+type ClusterAlertRuleSpec struct {
+	CommonRuleField
+	ClusterName       string             `json:"clusterName" norman:"type=reference[cluster]"`
+	GroupName         string             `json:"groupName" norman:"type=reference[clusterAlertGroup]"`
+	NodeRule          *NodeRule          `json:"nodeRule,omitempty"`
+	EventRule         *EventRule         `json:"eventRule,omitempty"`
+	SystemServiceRule *SystemServiceRule `json:"systemServiceRule,omitempty"`
+	MetricRule        *MetricRule        `json:"metricRule,omitempty"`
+}
+
+type ProjectAlertRule struct {
+	types.Namespaced
+
+	metav1.TypeMeta `json:",inline"`
+	// Standard object’s metadata. More info:
+	// https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#metadata
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec ProjectAlertRuleSpec `json:"spec"`
+	// Most recent observed status of the alert. More info:
+	// https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#spec-and-status
+	Status Status `json:"status"`
+}
+
+type ProjectAlertRuleSpec struct {
+	CommonRuleField
+	ProjectName  string        `json:"projectName" norman:"type=reference[project]"`
+	GroupName    string        `json:"groupName" norman:"type=reference[projectAlertGroup]"`
+	PodRule      *PodRule      `json:"podRule,omitempty"`
+	WorkloadRule *WorkloadRule `json:"workloadRule,omitempty"`
+	MetricRule   *MetricRule   `json:"metricRule,omitempty"`
+}
+
+type Status struct {
+	State string `json:"groupState,omitempty" norman:"options=active|inactive|alerting|muted,default=active"`
+}
+
+type CommonGroupField struct {
+	DisplayName string `json:"displayName,omitempty" norman:"required"`
+	Description string `json:"description,omitempty"`
+	TimingField
+}
+
+type CommonRuleField struct {
+	DisplayName string `json:"displayName,omitempty"`
+	Severity    string `json:"severity,omitempty" norman:"required,options=info|critical|warning,default=critical"`
+	TimingField
+}
+
+type MetricRule struct {
+	Expression     string  `json:"expression,omitempty" norman:"required"`
+	LegendFormat   string  `json:"legendFormat,omitempty"`
+	Step           int64   `json:"step,omitempty"`
+	Description    string  `json:"description,omitempty"`
+	Duration       string  `json:"duration",omitempty`
+	Comparison     string  `json:"comparison,omitempty" norman:"type=enum,options=equal|not-equal|greater-than|less-than|greater-or-equal|less-or-equal"`
+	ThresholdValue float64 `json:"thresholdValue,omitempty" norman:"type=float"`
+}
+
+type TimingField struct {
+	GroupWaitSeconds      int `json:"groupWaitSeconds,omitempty" norman:"required,default=30,min=0"`
+	GroupIntervalSeconds  int `json:"groupIntervalSeconds,omitempty" norman:"required,default=180,min=0"`
+	RepeatIntervalSeconds int `json:"repeatIntervalSeconds,omitempty"  norman:"required,default=3600,min=0"`
 }
 
 type Recipient struct {
@@ -65,7 +132,7 @@ type Recipient struct {
 	NotifierType string `json:"notifierType,omitempty" norman:"required,options=slack|email|pagerduty|webhook"`
 }
 
-type TargetNode struct {
+type NodeRule struct {
 	NodeName     string            `json:"nodeName,omitempty" norman:"type=reference[node]"`
 	Selector     map[string]string `json:"selector,omitempty"`
 	Condition    string            `json:"condition,omitempty" norman:"required,options=notready|mem|cpu,default=notready"`
@@ -73,30 +140,26 @@ type TargetNode struct {
 	CPUThreshold int               `json:"cpuThreshold,omitempty" norman:"min=1,default=70"`
 }
 
-type TargetPod struct {
+type PodRule struct {
 	PodName                string `json:"podName,omitempty" norman:"required,type=reference[/v3/projects/schemas/pod]"`
 	Condition              string `json:"condition,omitempty" norman:"required,options=notrunning|notscheduled|restarts,default=notrunning"`
 	RestartTimes           int    `json:"restartTimes,omitempty" norman:"min=1,default=3"`
 	RestartIntervalSeconds int    `json:"restartIntervalSeconds,omitempty"  norman:"min=1,default=300"`
 }
 
-type TargetEvent struct {
+type EventRule struct {
 	EventType    string `json:"eventType,omitempty" norman:"required,options=Normal|Warning,default=Warning"`
 	ResourceKind string `json:"resourceKind,omitempty" norman:"required,options=Pod|Node|Deployment|StatefulSet|DaemonSet"`
 }
 
-type TargetWorkload struct {
+type WorkloadRule struct {
 	WorkloadID          string            `json:"workloadId,omitempty"`
 	Selector            map[string]string `json:"selector,omitempty"`
 	AvailablePercentage int               `json:"availablePercentage,omitempty" norman:"required,min=1,max=100,default=70"`
 }
 
-type TargetSystemService struct {
+type SystemServiceRule struct {
 	Condition string `json:"condition,omitempty" norman:"required,options=etcd|controller-manager|scheduler,default=scheduler"`
-}
-
-type AlertStatus struct {
-	AlertState string `json:"alertState,omitempty" norman:"options=active|inactive|alerting|muted,default=active"`
 }
 
 type Notifier struct {
