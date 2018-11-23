@@ -14,6 +14,7 @@ import (
 	"github.com/rancher/rancher/pkg/controllers/user/ingress"
 	"github.com/rancher/rancher/pkg/controllers/user/ingresshostgen"
 	"github.com/rancher/rancher/pkg/controllers/user/logging"
+	"github.com/rancher/rancher/pkg/controllers/user/monitoring"
 	"github.com/rancher/rancher/pkg/controllers/user/networkpolicy"
 	"github.com/rancher/rancher/pkg/controllers/user/noderemove"
 	"github.com/rancher/rancher/pkg/controllers/user/nodesyncer"
@@ -55,6 +56,10 @@ func Register(ctx context.Context, cluster *config.UserContext, kubeConfigGetter
 	endpoints.Register(ctx, cluster)
 	approuter.Register(ctx, cluster)
 	resourcequota.Register(ctx, cluster)
+	alert.Register(ctx, cluster)
+	if err := monitoring.Register(ctx, cluster); err != nil {
+		return err
+	}
 
 	c, err := cluster.Management.Management.Clusters("").Get(cluster.ClusterName, metav1.GetOptions{})
 	if err != nil {
@@ -73,6 +78,7 @@ func Register(ctx context.Context, cluster *config.UserContext, kubeConfigGetter
 
 func RegisterFollower(ctx context.Context, cluster *config.UserContext, kubeConfigGetter common.KubeConfigGetter, clusterManager healthsyncer.ClusterControllerLifecycle) error {
 	cluster.Core.Namespaces("").Controller()
+	cluster.Core.Services("").Controller()
 	cluster.RBAC.ClusterRoleBindings("").Controller()
 	cluster.RBAC.RoleBindings("").Controller()
 	return nil

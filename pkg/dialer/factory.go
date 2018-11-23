@@ -110,10 +110,10 @@ func (f *Factory) clusterDialer(clusterName, address string) (dialer.Dialer, err
 		return nil, err
 	}
 
-	if cluster.Spec.Internal {
-		// For local (embedded, or import) we just assume we can connect directly
-		return native()
-	}
+	// if cluster.Spec.Internal {
+	// 	// For local (embedded, or import) we just assume we can connect directly
+	// 	return native()
+	// }
 
 	hostPort := hostPort(cluster)
 	if address == hostPort && isCloudDriver(cluster) {

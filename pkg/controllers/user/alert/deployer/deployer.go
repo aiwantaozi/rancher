@@ -1,14 +1,16 @@
-package deploy
+package deployer
 
 import (
 	"github.com/pkg/errors"
 	"github.com/rancher/norman/controller"
 	"github.com/rancher/rancher/pkg/controllers/user/alert/manager"
 	"github.com/rancher/rancher/pkg/image"
+	monitorutil "github.com/rancher/rancher/pkg/monitoring"
 	"github.com/rancher/types/apis/apps/v1beta2"
 	"github.com/rancher/types/apis/core/v1"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
@@ -18,37 +20,42 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func NewDeployer(cluster *config.UserContext, manager *manager.Manager) *Deployer {
+const (
+	appName    = "alertmanager"
+	appSvcName = "alertmanager-svc"
+)
+
+func NewDeployer(cluster *config.UserContext, manager *manager.AlertManager) *Deployer {
 	return &Deployer{
-		nsClient:           cluster.Core.Namespaces(""),
-		appsClient:         cluster.Apps.Deployments(""),
-		secretClient:       cluster.Core.Secrets(""),
-		svcClient:          cluster.Core.Services(""),
-		clusterAlertLister: cluster.Management.Management.ClusterAlerts(cluster.ClusterName).Controller().Lister(),
-		projectAlertLister: cluster.Management.Management.ProjectAlerts("").Controller().Lister(),
-		notifierLister:     cluster.Management.Management.Notifiers(cluster.ClusterName).Controller().Lister(),
-		alertManager:       manager,
-		clusterName:        cluster.ClusterName,
+		nsClient:                cluster.Core.Namespaces(""),
+		appsClient:              cluster.Apps.Deployments(""),
+		secretClient:            cluster.Core.Secrets(""),
+		svcClient:               cluster.Core.Services(""),
+		clusterAlertGroupLister: cluster.Management.Management.ClusterAlertGroups(cluster.ClusterName).Controller().Lister(),
+		projectAlertGroupLister: cluster.Management.Management.ProjectAlertGroups("").Controller().Lister(),
+		notifierLister:          cluster.Management.Management.Notifiers(cluster.ClusterName).Controller().Lister(),
+		alertManager:            manager,
+		clusterName:             cluster.ClusterName,
 	}
 }
 
 type Deployer struct {
-	nsClient           v1.NamespaceInterface
-	appsClient         v1beta2.DeploymentInterface
-	secretClient       v1.SecretInterface
-	svcClient          v1.ServiceInterface
-	projectAlertLister v3.ProjectAlertLister
-	clusterAlertLister v3.ClusterAlertLister
-	notifierLister     v3.NotifierLister
-	alertManager       *manager.Manager
-	clusterName        string
+	nsClient                v1.NamespaceInterface
+	appsClient              v1beta2.DeploymentInterface
+	secretClient            v1.SecretInterface
+	svcClient               v1.ServiceInterface
+	projectAlertGroupLister v3.ProjectAlertGroupLister
+	clusterAlertGroupLister v3.ClusterAlertGroupLister
+	notifierLister          v3.NotifierLister
+	alertManager            *manager.AlertManager
+	clusterName             string
 }
 
-func (d *Deployer) ProjectSync(key string, alert *v3.ProjectAlert) (runtime.Object, error) {
+func (d *Deployer) ProjectSync(key string, alert *v3.ProjectAlertGroup) (runtime.Object, error) {
 	return nil, d.sync()
 }
 
-func (d *Deployer) ClusterSync(key string, alert *v3.ClusterAlert) (runtime.Object, error) {
+func (d *Deployer) ClusterSync(key string, alert *v3.ClusterAlertGroup) (runtime.Object, error) {
 	return nil, d.sync()
 }
 
@@ -77,7 +84,7 @@ func (d *Deployer) needDeploy() (bool, error) {
 		return false, err
 	}
 
-	clusterAlerts, err := d.clusterAlertLister.List("", labels.NewSelector())
+	clusterAlerts, err := d.clusterAlertGroupLister.List("", labels.NewSelector())
 	if err != nil {
 		return false, err
 	}
@@ -88,7 +95,7 @@ func (d *Deployer) needDeploy() (bool, error) {
 		}
 	}
 
-	projectAlerts, err := d.projectAlertLister.List("", labels.NewSelector())
+	projectAlerts, err := d.projectAlertGroupLister.List("", labels.NewSelector())
 	if err != nil {
 		return false, nil
 	}
@@ -106,9 +113,22 @@ func (d *Deployer) needDeploy() (bool, error) {
 }
 
 func (d *Deployer) cleanup() error {
+	deleteOp := metav1.DeletePropagationBackground
+	var errgrp errgroup.Group
 
-	err := d.nsClient.Delete("cattle-alerting", &metav1.DeleteOptions{})
-	if err != nil && !apierrors.IsNotFound(err) {
+	errgrp.Go(func() error {
+		return d.svcClient.DeleteNamespaced(monitorutil.CattleNamespaceName, appName, &metav1.DeleteOptions{})
+	})
+
+	errgrp.Go(func() error {
+		return d.appsClient.DeleteNamespaced(monitorutil.CattleNamespaceName, appSvcName, &metav1.DeleteOptions{})
+	})
+
+	errgrp.Go(func() error {
+		return d.secretClient.DeleteNamespaced(monitorutil.CattleNamespaceName, appName, &metav1.DeleteOptions{PropagationPolicy: &deleteOp})
+	})
+
+	if err := errgrp.Wait(); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
@@ -121,7 +141,7 @@ func (d *Deployer) deploy() error {
 	//TODO: cleanup resources while there is not any alert configured
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "cattle-alerting",
+			Name: monitorutil.CattleNamespaceName,
 		},
 	}
 	if _, err := d.nsClient.Create(ns); err != nil && !apierrors.IsAlreadyExists(err) {
@@ -157,8 +177,8 @@ func (d *Deployer) getSecret() *corev1.Secret {
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "cattle-alerting",
-			Name:      "alertmanager",
+			Namespace: monitorutil.CattleNamespaceName,
+			Name:      appName,
 		},
 		Data: map[string][]byte{
 			"config.yml":        data,
@@ -170,16 +190,16 @@ func (d *Deployer) getSecret() *corev1.Secret {
 func getService() *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "cattle-alerting",
-			Name:      "alertmanager-svc",
+			Namespace: monitorutil.CattleNamespaceName,
+			Name:      appSvcName,
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
-				"app": "alertmanager",
+				"app": appName,
 			},
 			Ports: []corev1.ServicePort{
 				{
-					Name: "alertmanager",
+					Name: appName,
 					Port: 9093,
 				},
 			},
@@ -191,34 +211,34 @@ func GetDeployment() *appsv1beta2.Deployment {
 	replicas := int32(1)
 	return &appsv1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "cattle-alerting",
-			Name:      "alertmanager",
+			Namespace: monitorutil.CattleNamespaceName,
+			Name:      appName,
 		},
 		Spec: appsv1beta2.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"app": "alertmanager"},
+				MatchLabels: map[string]string{"app": appName},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"app": "alertmanager"},
-					Name:   "alertmanager",
+					Labels: map[string]string{"app": appName},
+					Name:   appName,
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  "alertmanager",
+							Name:  appName,
 							Image: image.Resolve(v3.ToolsSystemImages.AlertSystemImages.AlertManager),
 							Args:  []string{"--config.file=/etc/alertmanager/config.yml", "--storage.path=/alertmanager"},
 							Ports: []corev1.ContainerPort{
 								{
-									Name:          "alertmanager",
+									Name:          appName,
 									ContainerPort: 9093,
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "alertmanager",
+									Name:      appName,
 									MountPath: "/alertmanager",
 								},
 								{
@@ -242,7 +262,7 @@ func GetDeployment() *appsv1beta2.Deployment {
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: "alertmanager",
+							Name: appName,
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{},
 							},
@@ -251,7 +271,7 @@ func GetDeployment() *appsv1beta2.Deployment {
 							Name: "config-volume",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: "alertmanager",
+									SecretName: appName,
 								},
 							},
 						},

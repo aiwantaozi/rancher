@@ -39,8 +39,10 @@ import (
 	"github.com/rancher/rancher/pkg/controllers/management/compose/common"
 	"github.com/rancher/rancher/pkg/nodeconfig"
 	sourcecodeproviders "github.com/rancher/rancher/pkg/pipeline/providers"
+	clusterv3schema "github.com/rancher/types/apis/cluster.cattle.io/v3/schema"
 	managementschema "github.com/rancher/types/apis/management.cattle.io/v3/schema"
 	projectschema "github.com/rancher/types/apis/project.cattle.io/v3/schema"
+	clusterv3client "github.com/rancher/types/client/cluster/v3"
 	"github.com/rancher/types/client/management/v3"
 	projectclient "github.com/rancher/types/client/project/v3"
 	"github.com/rancher/types/config"
@@ -52,13 +54,13 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 	schemas := apiContext.Schemas
 
 	factory := &crd.Factory{ClientGetter: apiContext.ClientGetter}
-
 	factory.BatchCreateCRDs(ctx, config.ManagementStorageContext, schemas, &managementschema.Version,
 		client.AuthConfigType,
 		client.CatalogType,
-		client.ClusterAlertType,
+		client.ClusterAlertGroupType,
 		client.ClusterCatalogType,
 		client.ClusterLoggingType,
+		client.ClusterAlertRuleType,
 		client.ClusterRegistrationTokenType,
 		client.ClusterRoleTemplateBindingType,
 		client.ClusterType,
@@ -77,9 +79,10 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 		client.PodSecurityPolicyTemplateProjectBindingType,
 		client.PodSecurityPolicyTemplateType,
 		client.PreferenceType,
-		client.ProjectAlertType,
+		client.ProjectAlertGroupType,
 		client.ProjectCatalogType,
 		client.ProjectLoggingType,
+		client.ProjectAlertRuleType,
 		client.ProjectNetworkPolicyType,
 		client.ProjectRoleTemplateBindingType,
 		client.ProjectType,
@@ -101,6 +104,11 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 		projectclient.SourceCodeCredentialType,
 		projectclient.SourceCodeProviderConfigType,
 		projectclient.SourceCodeRepositoryType,
+	)
+
+	factory.BatchCreateCRDs(ctx, config.UserStorageContext, clusterManager.ScaledContext.Schemas, &clusterv3schema.Version,
+		clusterv3client.MonitorGraphType,
+		clusterv3client.MonitorMetricType,
 	)
 
 	factory.BatchWait()
@@ -370,23 +378,35 @@ func LoggingTypes(schemas *types.Schemas) {
 
 func Alert(schemas *types.Schemas, management *config.ScaledContext) {
 	handler := &alert.Handler{
-		ProjectAlerts: management.Management.ProjectAlerts(""),
-		ClusterAlerts: management.Management.ClusterAlerts(""),
-		Notifiers:     management.Management.Notifiers(""),
+		ClusterAlertGroup: management.Management.ClusterAlertGroups(""),
+		ProjectAlertGroup: management.Management.ProjectAlertGroups(""),
+		ClusterAlertRule:  management.Management.ClusterAlertRules(""),
+		ProjectAlertRule:  management.Management.ProjectAlertRules(""),
+		Notifiers:         management.Management.Notifiers(""),
 	}
 
-	schema := schemas.Schema(&managementschema.Version, client.ClusterAlertType)
-	schema.Formatter = alert.Formatter
-	schema.ActionHandler = handler.ClusterActionHandler
-
-	schema = schemas.Schema(&managementschema.Version, client.ProjectAlertType)
-	schema.Formatter = alert.Formatter
-	schema.ActionHandler = handler.ProjectActionHandler
-
-	schema = schemas.Schema(&managementschema.Version, client.NotifierType)
+	schema := schemas.Schema(&managementschema.Version, client.NotifierType)
 	schema.CollectionFormatter = alert.NotifierCollectionFormatter
 	schema.Formatter = alert.NotifierFormatter
 	schema.ActionHandler = handler.NotifierActionHandler
+
+	schema = schemas.Schema(&managementschema.Version, client.ClusterAlertGroupType)
+	schema.Formatter = alert.GroupFormatter
+	schema.ActionHandler = handler.ClusterAlertGroupActionHandler
+
+	schema = schemas.Schema(&managementschema.Version, client.ProjectAlertGroupType)
+	schema.Formatter = alert.GroupFormatter
+	schema.ActionHandler = handler.ProjectAlertGroupActionHandler
+
+	schema = schemas.Schema(&managementschema.Version, client.ClusterAlertRuleType)
+	schema.Formatter = alert.RuleFormatter
+	schema.Validator = alert.ClusterAlertRuleValidator
+	schema.ActionHandler = handler.ClusterAlertRuleActionHandler
+
+	schema = schemas.Schema(&managementschema.Version, client.ProjectAlertRuleType)
+	schema.Formatter = alert.RuleFormatter
+	schema.Validator = alert.ProjectAlertRuleValidator
+	schema.ActionHandler = handler.ProjectAlertRuleActionHandler
 }
 
 func Pipeline(schemas *types.Schemas, management *config.ScaledContext, clusterManager *clustermanager.Manager) {

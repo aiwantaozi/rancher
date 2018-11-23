@@ -12,6 +12,7 @@ import (
 
 	"github.com/prometheus/common/model"
 	alertconfig "github.com/rancher/rancher/pkg/controllers/user/alert/config"
+	monitorutil "github.com/rancher/rancher/pkg/monitoring"
 
 	"github.com/rancher/types/apis/core/v1"
 	"github.com/rancher/types/config"
@@ -80,15 +81,15 @@ const (
 	SilenceStatePending SilenceState = "pending"
 )
 
-type Manager struct {
+type AlertManager struct {
 	svcLister   v1.ServiceLister
 	dialer      dialer.Factory
-	IsDeploy    bool
 	clusterName string
 	client      *http.Client
+	IsDeploy    bool
 }
 
-func NewManager(cluster *config.UserContext) *Manager {
+func NewAlertManager(cluster *config.UserContext) *AlertManager {
 
 	dial, err := cluster.Management.Dialer.ClusterDialer(cluster.ClusterName)
 	if err != nil {
@@ -101,17 +102,15 @@ func NewManager(cluster *config.UserContext) *Manager {
 		Timeout: 15 * time.Second,
 	}
 
-	return &Manager{
+	return &AlertManager{
 		svcLister:   cluster.Core.Services("").Controller().Lister(),
 		client:      client,
-		IsDeploy:    false,
 		clusterName: cluster.ClusterName,
 	}
 }
 
-func (m *Manager) getAlertManagerEndpoint() (string, error) {
-
-	svc, err := m.svcLister.Get("cattle-alerting", "alertmanager-svc")
+func (m *AlertManager) GetAlertManagerEndpoint() (string, error) {
+	svc, err := m.svcLister.Get(monitorutil.CattleNamespaceName, "alertmanager-svc")
 	if err != nil {
 		return "", fmt.Errorf("Failed to get service for alertmanager")
 	}
@@ -123,7 +122,7 @@ func (m *Manager) getAlertManagerEndpoint() (string, error) {
 	return url, nil
 }
 
-func (m *Manager) GetDefaultConfig() *alertconfig.Config {
+func (m *AlertManager) GetDefaultConfig() *alertconfig.Config {
 	config := alertconfig.Config{}
 
 	resolveTimeout, _ := model.ParseDuration("5m")
@@ -159,14 +158,14 @@ func (m *Manager) GetDefaultConfig() *alertconfig.Config {
 		RepeatInterval: &repeatInterval,
 	}
 
-	config.Templates = []string{"/etc/alertmanager/notification.tmpl"}
+	config.Templates = []string{"/etc/alertmanager/config/notification.tmpl"}
 
 	return &config
 }
 
-func (m *Manager) GetAlertList() ([]*APIAlert, error) {
+func (m *AlertManager) GetAlertList() ([]*APIAlert, error) {
 
-	url, err := m.getAlertManagerEndpoint()
+	url, err := m.GetAlertManagerEndpoint()
 	if err != nil {
 		return nil, err
 	}
@@ -198,10 +197,10 @@ func (m *Manager) GetAlertList() ([]*APIAlert, error) {
 	return res.Data, nil
 }
 
-func (m *Manager) GetState(alertID string, apiAlerts []*APIAlert) string {
+func (m *AlertManager) GetState(matcherName, matcherValue string, apiAlerts []*APIAlert) string {
 
 	for _, a := range apiAlerts {
-		if string(a.Labels["alert_id"]) == alertID {
+		if string(a.Labels[model.LabelName(matcherName)]) == matcherValue {
 			if a.Status.State == "suppressed" {
 				return "muted"
 			}
@@ -212,17 +211,17 @@ func (m *Manager) GetState(alertID string, apiAlerts []*APIAlert) string {
 	return "active"
 }
 
-func (m *Manager) AddSilenceRule(alertID string) error {
+func (m *AlertManager) AddSilenceRule(matcherName, matcherValue string) error {
 
-	url, err := m.getAlertManagerEndpoint()
+	url, err := m.GetAlertManagerEndpoint()
 	if err != nil {
 		return err
 	}
 
 	matchers := []*model.Matcher{}
 	m1 := &model.Matcher{
-		Name:    "alert_id",
-		Value:   alertID,
+		Name:    model.LabelName(matcherName),
+		Value:   matcherValue,
 		IsRegex: false,
 	}
 	matchers = append(matchers, m1)
@@ -263,8 +262,8 @@ func (m *Manager) AddSilenceRule(alertID string) error {
 
 }
 
-func (m *Manager) RemoveSilenceRule(alertID string) error {
-	url, err := m.getAlertManagerEndpoint()
+func (m *AlertManager) RemoveSilenceRule(matcherName, matcherValue string) error {
+	url, err := m.GetAlertManagerEndpoint()
 	if err != nil {
 		return err
 	}
@@ -278,7 +277,7 @@ func (m *Manager) RemoveSilenceRule(alertID string) error {
 		return err
 	}
 	q := req.URL.Query()
-	q.Add("filter", fmt.Sprintf("{%s}", "alert_id="+alertID))
+	q.Add("filter", fmt.Sprintf("{%s=%s}", matcherName, matcherValue))
 	req.URL.RawQuery = q.Encode()
 
 	resp, err := m.client.Do(req)
@@ -323,8 +322,8 @@ func (m *Manager) RemoveSilenceRule(alertID string) error {
 	return nil
 }
 
-func (m *Manager) SendAlert(labels map[string]string) error {
-	url, err := m.getAlertManagerEndpoint()
+func (m *AlertManager) SendAlert(labels map[string]string) error {
+	url, err := m.GetAlertManagerEndpoint()
 	if err != nil {
 		return err
 	}
@@ -343,7 +342,7 @@ func (m *Manager) SendAlert(labels map[string]string) error {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, url+"/api/v1/alerts", bytes.NewBuffer(alertData))
+	req, err := http.NewRequest(http.MethodPost, url+"/api/alerts", bytes.NewBuffer(alertData))
 	if err != nil {
 		return err
 	}
@@ -354,13 +353,9 @@ func (m *Manager) SendAlert(labels map[string]string) error {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("alertmanager response is %d, body: %s", resp.StatusCode, string(body))
 	}
 
 	return nil

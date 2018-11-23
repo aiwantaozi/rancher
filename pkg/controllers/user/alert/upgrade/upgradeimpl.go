@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rancher/rancher/pkg/controllers/user/alert/deploy"
+	"github.com/rancher/rancher/pkg/controllers/user/alert/deployer"
 	"github.com/rancher/rancher/pkg/controllers/user/systemimage"
 	rv1beta2 "github.com/rancher/types/apis/apps/v1beta2"
 	"github.com/rancher/types/config"
@@ -31,12 +31,12 @@ func (l *alertService) Init(ctx context.Context, cluster *config.UserContext) {
 }
 
 func (l *alertService) Version() (string, error) {
-	deployment := deploy.GetDeployment()
+	deployment := deployer.GetDeployment()
 	return systemimage.DefaultGetVersion(deployment)
 }
 
 func (l *alertService) Upgrade(currentVersion string) (string, error) {
-	deployment := deploy.GetDeployment()
+	deployment := deployer.GetDeployment()
 	newVersion, err := systemimage.DefaultGetVersion(deployment)
 	if err != nil {
 		return "", err

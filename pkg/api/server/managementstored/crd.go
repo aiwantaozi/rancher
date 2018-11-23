@@ -24,7 +24,7 @@ func createCrd(ctx context.Context, wg *sync.WaitGroup, factory *crd.Factory, sc
 			schemasToCreate = append(schemasToCreate, s)
 		}
 
-		err := factory.AssignStores(ctx, config.ManagementStorageContext, schemasToCreate...)
+		err := factory.AssignStores(ctx, config.ManagementStorageContext, version, schemasToCreate...)
 		if err != nil {
 			panic("creating CRD store " + err.Error())
 		}

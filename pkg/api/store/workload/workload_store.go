@@ -307,6 +307,52 @@ func setPorts(workloadName string, data map[string]interface{}) error {
 				}
 			}
 		}
+		fmt.Printf("ports before %#v\n", v)
+		m, ok := values.GetValue(cMap, "containerMetrics")
+		if ok {
+			metrics := convert.ToMapSlice(m)
+			var ports []map[string]interface{}
+			if v != nil {
+				ports = convert.ToMapSlice(v)
+			}
+			for _, metric := range metrics {
+				found := false
+				for _, p := range ports {
+					port, err := convert.EncodeToMap(p)
+					if err != nil {
+						logrus.Warnf("Failed to transform port to map %v", err)
+						continue
+					}
+					if convert.ToString(port["containerPort"]) == convert.ToString(metric["port"]) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					containerPort := metric["port"]
+					sourcePort := "0"
+					kind := "ClusterIP"
+					dnsName := fmt.Sprintf("%s-%s", strings.ToLower(convert.ToString(workloadName)), "metrics")
+					name := fmt.Sprintf("%s%s%s%s",
+						fmt.Sprint(containerPort),
+						"tcp",
+						sourcePort,
+						"2",
+					)
+					newPort := map[string]interface{}{
+						"name":          name,
+						"protocol":      "TCP",
+						"containerPort": metric["port"],
+						"sourcePort":    sourcePort,
+						"kind":          kind,
+						"dnsName":       dnsName,
+					}
+					ports = append(ports, newPort)
+				}
+				fmt.Printf("ports %#v\n", ports)
+			}
+			values.PutValue(cMap, ports, "ports")
+		}
 	}
 	return nil
 }

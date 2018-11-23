@@ -7,6 +7,7 @@ import (
 	"github.com/rancher/norman/store/subtype"
 	"github.com/rancher/norman/types"
 	namespacecustom "github.com/rancher/rancher/pkg/api/customization/namespace"
+	"github.com/rancher/rancher/pkg/api/customization/stats"
 	"github.com/rancher/rancher/pkg/api/customization/yaml"
 	"github.com/rancher/rancher/pkg/api/store/cert"
 	"github.com/rancher/rancher/pkg/api/store/ingress"
@@ -45,7 +46,13 @@ func Setup(ctx context.Context, mgmt *config.ScaledContext, clusterManager *clus
 	addProxyStore(ctx, schemas, mgmt, client.StatefulSetType, "apps/v1beta2", workload.NewCustomizeStore)
 	addProxyStore(ctx, schemas, mgmt, clusterClient.NamespaceType, "v1", namespace.New)
 	addProxyStore(ctx, schemas, mgmt, clusterClient.PersistentVolumeType, "v1", nil)
+	addProxyStore(ctx, schemas, mgmt, clusterClient.MonitorMetricType, "cluster.cattle.io/v3", nil)
+	addProxyStore(ctx, schemas, mgmt, clusterClient.MonitorGraphType, "cluster.cattle.io/v3", nil)
 	addProxyStore(ctx, schemas, mgmt, clusterClient.StorageClassType, "storage.k8s.io/v1", nil)
+	addProxyStore(ctx, schemas, mgmt, client.PrometheusType, "monitoring.native.cattle.io/v1", nil)
+	addProxyStore(ctx, schemas, mgmt, client.PrometheusRuleType, "monitoring.native.cattle.io/v1", nil)
+	addProxyStore(ctx, schemas, mgmt, client.AlertmanagerType, "monitoring.native.cattle.io/v1", nil)
+	addProxyStore(ctx, schemas, mgmt, client.ServiceMonitorType, "monitoring.native.cattle.io/v1", nil)
 
 	Secret(ctx, mgmt, schemas)
 	Service(ctx, schemas, mgmt)
@@ -54,6 +61,7 @@ func Setup(ctx context.Context, mgmt *config.ScaledContext, clusterManager *clus
 
 	SetProjectID(schemas, clusterManager, k8sProxy)
 
+	stats.Register(mgmt, clusterManager)
 	return nil
 }
 

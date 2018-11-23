@@ -13,12 +13,12 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func StartStateSyncer(ctx context.Context, cluster *config.UserContext, manager *manager.Manager) {
+func StartStateSyncer(ctx context.Context, cluster *config.UserContext, manager *manager.AlertManager) {
 	s := &StateSyncer{
-		clusterAlertClient: cluster.Management.Management.ClusterAlerts(cluster.ClusterName),
-		projectAlertClient: cluster.Management.Management.ProjectAlerts(""),
-		alertManager:       manager,
-		clusterName:        cluster.ClusterName,
+		clusterAlertGroupClient: cluster.Management.Management.ClusterAlertGroups(cluster.ClusterName),
+		projectAlertGroupClient: cluster.Management.Management.ProjectAlertGroups(""),
+		alertManager:            manager,
+		clusterName:             cluster.ClusterName,
 	}
 	go s.watch(ctx, 10*time.Second)
 }
@@ -30,10 +30,10 @@ func (s *StateSyncer) watch(ctx context.Context, interval time.Duration) {
 }
 
 type StateSyncer struct {
-	clusterAlertClient v3.ClusterAlertInterface
-	projectAlertClient v3.ProjectAlertInterface
-	alertManager       *manager.Manager
-	clusterName        string
+	clusterAlertGroupClient v3.ClusterAlertGroupInterface
+	projectAlertGroupClient v3.ProjectAlertGroupInterface
+	alertManager            *manager.AlertManager
+	clusterName             string
 }
 
 //synchronize the state between alert CRD and alertmanager.
@@ -45,17 +45,17 @@ func (s *StateSyncer) syncState() error {
 
 	apiAlerts, err := s.alertManager.GetAlertList()
 	if err == nil {
-		clusterAlerts, err := s.clusterAlertClient.Controller().Lister().List("", labels.NewSelector())
+		clusterAlerts, err := s.clusterAlertGroupClient.Controller().Lister().List("", labels.NewSelector())
 		if err != nil {
 			return err
 		}
 
-		projectAlerts, err := s.projectAlertClient.Controller().Lister().List("", labels.NewSelector())
+		projectAlerts, err := s.projectAlertGroupClient.Controller().Lister().List("", labels.NewSelector())
 		if err != nil {
 			return err
 		}
 
-		pAlerts := []*v3.ProjectAlert{}
+		pAlerts := []*v3.ProjectAlertGroup{}
 		for _, alert := range projectAlerts {
 			if controller.ObjectInCluster(s.clusterName, alert) {
 				pAlerts = append(pAlerts, alert)
@@ -63,13 +63,20 @@ func (s *StateSyncer) syncState() error {
 		}
 
 		for _, alert := range clusterAlerts {
-			alertID := alert.Namespace + "-" + alert.Name
-			state := s.alertManager.GetState(alertID, apiAlerts)
-			needUpdate := s.doSync(alertID, alert.Status.AlertState, state)
+			groupID := alert.Namespace + "-" + alert.Name
+			state := s.alertManager.GetState("group_id", groupID, apiAlerts)
+			groupNeedUpdate := s.doSync("group_id", groupID, alert.Status.GroupState, state)
+			alert.Status.GroupState = state
 
-			if needUpdate {
-				alert.Status.AlertState = state
-				_, err := s.clusterAlertClient.Update(alert)
+			var ruleNeedUpdate bool
+			for _, v := range alert.Status.RuleStates {
+				state := s.alertManager.GetState("rule_id", groupID, apiAlerts)
+				ruleNeedUpdate = s.doSync("rule_id", groupID, alert.Status.GroupState, state)
+				v.State = state
+			}
+
+			if groupNeedUpdate || ruleNeedUpdate {
+				_, err := s.clusterAlertGroupClient.Update(alert)
 				if err != nil {
 					logrus.Errorf("Error occurred while updating alert state : %v", err)
 				}
@@ -77,13 +84,20 @@ func (s *StateSyncer) syncState() error {
 		}
 
 		for _, alert := range pAlerts {
-			alertID := alert.Namespace + "-" + alert.Name
-			state := s.alertManager.GetState(alertID, apiAlerts)
-			needUpdate := s.doSync(alertID, alert.Status.AlertState, state)
+			groupID := alert.Namespace + "-" + alert.Name
+			state := s.alertManager.GetState("group_id", groupID, apiAlerts)
+			groupNeedUpdate := s.doSync("group_id", groupID, alert.Status.GroupState, state)
+			alert.Status.GroupState = state
 
-			if needUpdate {
-				alert.Status.AlertState = state
-				_, err := s.projectAlertClient.Update(alert)
+			var ruleNeedUpdate bool
+			for _, v := range alert.Status.RuleStates {
+				state := s.alertManager.GetState("rule_id", groupID, apiAlerts)
+				ruleNeedUpdate = s.doSync("rule_id", groupID, alert.Status.GroupState, state)
+				v.State = state
+			}
+
+			if groupNeedUpdate || ruleNeedUpdate {
+				_, err := s.projectAlertGroupClient.Update(alert)
 				if err != nil {
 					logrus.Errorf("Error occurred while updating alert state and time: %v", err)
 				}
@@ -97,7 +111,7 @@ func (s *StateSyncer) syncState() error {
 
 //The curState is the state in the CRD status,
 //The newState is the state in alert manager side
-func (s *StateSyncer) doSync(alertID, curState, newState string) (needUpdate bool) {
+func (s *StateSyncer) doSync(matcherName, matcherValue, curState, newState string) (needUpdate bool) {
 	if curState == "inactive" {
 		return false
 	}
@@ -108,7 +122,7 @@ func (s *StateSyncer) doSync(alertID, curState, newState string) (needUpdate boo
 		//the alert is muted by user (curState == muted), but it already went away in alertmanager side (newState == active)
 		//then we need to remove the silence rule and update the state in CRD
 		if curState == "muted" && newState == "active" {
-			err := s.alertManager.RemoveSilenceRule(alertID)
+			err := s.alertManager.RemoveSilenceRule(matcherName, matcherValue)
 			if err != nil {
 				logrus.Errorf("Error occurred while remove silence : %v", err)
 			}
@@ -118,7 +132,7 @@ func (s *StateSyncer) doSync(alertID, curState, newState string) (needUpdate boo
 		//the alert is unmuted by user, but it is still muted in alertmanager side
 		//need to remove the silence rule, but do not have to update the CRD
 		if curState == "alerting" && newState == "muted" {
-			err := s.alertManager.RemoveSilenceRule(alertID)
+			err := s.alertManager.RemoveSilenceRule(matcherName, matcherValue)
 			if err != nil {
 				logrus.Errorf("Error occurred while remove silence : %v", err)
 			}
@@ -128,7 +142,7 @@ func (s *StateSyncer) doSync(alertID, curState, newState string) (needUpdate boo
 		//the alert is muted by user, but it is still alerting in alertmanager side
 		//need to add silence rule to alertmanager
 		if curState == "muted" && newState == "alerting" {
-			err := s.alertManager.AddSilenceRule(alertID)
+			err := s.alertManager.AddSilenceRule(matcherName, matcherValue)
 			if err != nil {
 				logrus.Errorf("Error occurred while remove silence : %v", err)
 			}

@@ -29,6 +29,18 @@ func NewTransformStore(store types.Store) types.Store {
 				hide = hideByOwner(data)
 			}
 			typeName := definition.GetType(data)
+			if data["ownerReferences"] != nil {
+				hide = false
+				owners := convert.ToMapSlice(data["ownerReferences"])
+				for _, owner := range owners {
+					apiVersion := convert.ToString(owner["apiVersion"])
+					//common k8s workload object does not has dot(.) in api version, but operator does.
+					if strings.Index(apiVersion, ".") < 0 || strings.Contains(apiVersion, "k8s.io") {
+						hide = true
+						break
+					}
+				}
+			}
 			name, _ := data["name"].(string)
 			if hide && data["ownerReferences"] != nil {
 				pod.SaveOwner(apiContext, typeName, name, data)

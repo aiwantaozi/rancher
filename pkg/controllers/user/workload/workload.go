@@ -24,6 +24,7 @@ import (
 
 const (
 	creatorIDAnnotation = "field.cattle.io/creatorId"
+	metricsAnnotation   = "field.cattle.io/workloadMetrics"
 )
 
 type Controller struct {

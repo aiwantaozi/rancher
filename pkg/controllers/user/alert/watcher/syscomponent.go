@@ -18,21 +18,21 @@ import (
 )
 
 type SysComponentWatcher struct {
-	componentStatuses  v1.ComponentStatusInterface
-	clusterAlertLister v3.ClusterAlertLister
-	alertManager       *manager.Manager
-	clusterName        string
-	clusterLister      v3.ClusterLister
+	componentStatuses      v1.ComponentStatusInterface
+	clusterAlertRuleLister v3.ClusterAlertRuleLister
+	alertManager           *manager.AlertManager
+	clusterName            string
+	clusterLister          v3.ClusterLister
 }
 
-func StartSysComponentWatcher(ctx context.Context, cluster *config.UserContext, manager *manager.Manager) {
+func StartSysComponentWatcher(ctx context.Context, cluster *config.UserContext, manager *manager.AlertManager) {
 
 	s := &SysComponentWatcher{
-		componentStatuses:  cluster.Core.ComponentStatuses(""),
-		clusterAlertLister: cluster.Management.Management.ClusterAlerts(cluster.ClusterName).Controller().Lister(),
-		alertManager:       manager,
-		clusterName:        cluster.ClusterName,
-		clusterLister:      cluster.Management.Management.Clusters("").Controller().Lister(),
+		componentStatuses:      cluster.Core.ComponentStatuses(""),
+		clusterAlertRuleLister: cluster.Management.Management.ClusterAlertRules(cluster.ClusterName).Controller().Lister(),
+		alertManager:           manager,
+		clusterName:            cluster.ClusterName,
+		clusterLister:          cluster.Management.Management.Clusters("").Controller().Lister(),
 	}
 	go s.watch(ctx, syncInterval)
 }
@@ -51,7 +51,7 @@ func (w *SysComponentWatcher) watchRule() error {
 		return nil
 	}
 
-	clusterAlerts, err := w.clusterAlertLister.List("", labels.NewSelector())
+	clusterAlerts, err := w.clusterAlertRuleLister.List("", labels.NewSelector())
 	if err != nil {
 		return err
 	}
@@ -60,21 +60,21 @@ func (w *SysComponentWatcher) watchRule() error {
 	if err != nil {
 		return err
 	}
-	for _, alert := range clusterAlerts {
-		if alert.Status.AlertState == "inactive" {
+	for _, rule := range clusterAlerts {
+		if rule.Status.State == "inactive" {
 			continue
 		}
-		if alert.Spec.TargetSystemService != nil {
-			w.checkComponentHealthy(statuses, alert)
+		if rule.Spec.SystemServiceRule != nil {
+			w.checkComponentHealthy(rule.Name, rule.Namespace, statuses, rule)
 		}
 	}
 	return nil
 }
 
-func (w *SysComponentWatcher) checkComponentHealthy(statuses *v1.ComponentStatusList, alert *v3.ClusterAlert) {
-	alertID := alert.Namespace + "-" + alert.Name
+func (w *SysComponentWatcher) checkComponentHealthy(name, namespace string, statuses *v1.ComponentStatusList, alert *v3.ClusterAlertRule) {
+	groupID := namespace + "-" + name
 	for _, cs := range statuses.Items {
-		if strings.HasPrefix(cs.Name, alert.Spec.TargetSystemService.Condition) {
+		if strings.HasPrefix(cs.Name, alert.Spec.SystemServiceRule.Condition) {
 			for _, cond := range cs.Conditions {
 				if cond.Type == corev1.ComponentHealthy {
 					if cond.Status == corev1.ConditionFalse {
@@ -89,11 +89,12 @@ func (w *SysComponentWatcher) checkComponentHealthy(statuses *v1.ComponentStatus
 
 						data := map[string]string{}
 						data["alert_type"] = "systemService"
-						data["alert_id"] = alertID
+						data["group_id"] = groupID
+						data["group_name"] = name
 						data["severity"] = alert.Spec.Severity
-						data["alert_name"] = alert.Spec.DisplayName
+						data["rule_id"] = alert.Name
 						data["cluster_name"] = clusterDisplayName
-						data["component_name"] = alert.Spec.TargetSystemService.Condition + ":" + cs.Name
+						data["component_name"] = alert.Spec.SystemServiceRule.Condition
 
 						if cond.Message != "" {
 							data["logs"] = cond.Message
