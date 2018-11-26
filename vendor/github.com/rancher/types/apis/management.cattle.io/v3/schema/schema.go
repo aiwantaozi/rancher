@@ -599,19 +599,31 @@ func monitorTypes(schemas *types.Schemas) *types.Schemas {
 		MustImport(&Version, v3.ClusterMonitorGraph{}).
 		MustImport(&Version, v3.ProjectMonitorGraph{}).
 		MustImport(&Version, v3.QueryGraphInput{}).
-		MustImport(&Version, v3.QueryGraphOutput{}).
-		MustImport(&Version, v3.QueryGraphOutputCollection{}).
-		MustImport(&Version, v3.QueryMetricInput{}).
+		MustImport(&Version, v3.QueryClusterGraphOutput{}).
+		MustImport(&Version, v3.QueryProjectGraphOutput{}).
+		MustImport(&Version, v3.QueryClusterMetricInput{}).
+		MustImport(&Version, v3.QueryProjectMetricInput{}).
 		MustImport(&Version, v3.QueryMetricOutput{}).
+		MustImport(&Version, v3.ClusterMetricNamesInput{}).
+		MustImport(&Version, v3.ProjectMetricNamesInput{}).
 		MustImport(&Version, v3.MetricNamesOutput{}).
-		MustImport(&Version, v3.Serie{}).
+		MustImport(&Version, v3.TimeSeries{}).
 		MustImportAndCustomize(&Version, v3.MonitorMetric{}, func(schema *types.Schema) {
 			schema.CollectionActions = map[string]types.Action{
-				"query": {
-					Input:  "queryMetricInput",
+				"querycluster": {
+					Input:  "queryClusterMetricInput",
 					Output: "queryMetricOutput",
 				},
-				"listmetricname": {
+				"listclustermetricname": {
+					Input:  "clusterMetricNamesInput",
+					Output: "metricNamesOutput",
+				},
+				"queryproject": {
+					Input:  "queryProjectMetricInput",
+					Output: "queryMetricOutput",
+				},
+				"listprojectmetricname": {
+					Input:  "projectMetricNamesInput",
 					Output: "metricNamesOutput",
 				},
 			}
@@ -620,31 +632,29 @@ func monitorTypes(schemas *types.Schemas) *types.Schemas {
 			schema.ResourceActions = map[string]types.Action{
 				"query": {
 					Input:  "queryGraphInput",
-					Output: "queryGraphOutput",
+					Output: "queryClusterGraphOutput",
 				},
 			}
 			schema.CollectionActions = map[string]types.Action{
 				"query": {
 					Input:  "queryGraphInput",
-					Output: "queryGraphOutputCollection",
+					Output: "queryClusterGraphOutput",
 				},
 			}
-
 		}).
 		MustImportAndCustomize(&Version, v3.ProjectMonitorGraph{}, func(schema *types.Schema) {
-			schema.ResourceActions = map[string]types.Action{
+			schema.CollectionActions = map[string]types.Action{
 				"query": {
 					Input:  "queryGraphInput",
-					Output: "queryGraphOutput",
+					Output: "queryProjectGraphOutput",
 				},
 			}
 			schema.CollectionActions = map[string]types.Action{
 				"query": {
 					Input:  "queryGraphInput",
-					Output: "queryGraphOutputCollection",
+					Output: "queryProjectGraphOutput",
 				},
 			}
-
 		})
 
 }

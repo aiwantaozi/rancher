@@ -11,19 +11,18 @@ const (
 	ProjectMonitorGraphFieldCreatorID              = "creatorId"
 	ProjectMonitorGraphFieldDescription            = "description"
 	ProjectMonitorGraphFieldDetailsMetricsSelector = "detailsMetricsSelector"
-	ProjectMonitorGraphFieldEnable                 = "enable"
+	ProjectMonitorGraphFieldDisplayResourceType    = "displayResourceType"
 	ProjectMonitorGraphFieldLabels                 = "labels"
 	ProjectMonitorGraphFieldMetricsSelector        = "metricsSelector"
 	ProjectMonitorGraphFieldName                   = "name"
 	ProjectMonitorGraphFieldNamespaceId            = "namespaceId"
 	ProjectMonitorGraphFieldOwnerReferences        = "ownerReferences"
 	ProjectMonitorGraphFieldPriority               = "priority"
+	ProjectMonitorGraphFieldProjectID              = "projectId"
 	ProjectMonitorGraphFieldRemoved                = "removed"
-	ProjectMonitorGraphFieldThresholds             = "thresholds"
-	ProjectMonitorGraphFieldTitle                  = "title"
+	ProjectMonitorGraphFieldResourceType           = "resourceType"
 	ProjectMonitorGraphFieldType                   = "type"
 	ProjectMonitorGraphFieldUUID                   = "uuid"
-	ProjectMonitorGraphFieldXAxis                  = "xAxis"
 	ProjectMonitorGraphFieldYAxis                  = "yAxis"
 )
 
@@ -34,19 +33,18 @@ type ProjectMonitorGraph struct {
 	CreatorID              string            `json:"creatorId,omitempty" yaml:"creatorId,omitempty"`
 	Description            string            `json:"description,omitempty" yaml:"description,omitempty"`
 	DetailsMetricsSelector map[string]string `json:"detailsMetricsSelector,omitempty" yaml:"detailsMetricsSelector,omitempty"`
-	Enable                 bool              `json:"enable,omitempty" yaml:"enable,omitempty"`
+	DisplayResourceType    string            `json:"displayResourceType,omitempty" yaml:"displayResourceType,omitempty"`
 	Labels                 map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	MetricsSelector        map[string]string `json:"metricsSelector,omitempty" yaml:"metricsSelector,omitempty"`
 	Name                   string            `json:"name,omitempty" yaml:"name,omitempty"`
 	NamespaceId            string            `json:"namespaceId,omitempty" yaml:"namespaceId,omitempty"`
 	OwnerReferences        []OwnerReference  `json:"ownerReferences,omitempty" yaml:"ownerReferences,omitempty"`
 	Priority               int64             `json:"priority,omitempty" yaml:"priority,omitempty"`
+	ProjectID              string            `json:"projectId,omitempty" yaml:"projectId,omitempty"`
 	Removed                string            `json:"removed,omitempty" yaml:"removed,omitempty"`
-	Thresholds             *float64          `json:"thresholds,omitempty" yaml:"thresholds,omitempty"`
-	Title                  string            `json:"title,omitempty" yaml:"title,omitempty"`
+	ResourceType           string            `json:"resourceType,omitempty" yaml:"resourceType,omitempty"`
 	Type                   string            `json:"type,omitempty" yaml:"type,omitempty"`
 	UUID                   string            `json:"uuid,omitempty" yaml:"uuid,omitempty"`
-	XAxis                  *XAxis            `json:"xAxis,omitempty" yaml:"xAxis,omitempty"`
 	YAxis                  *YAxis            `json:"yAxis,omitempty" yaml:"yAxis,omitempty"`
 }
 
@@ -68,9 +66,7 @@ type ProjectMonitorGraphOperations interface {
 	ByID(id string) (*ProjectMonitorGraph, error)
 	Delete(container *ProjectMonitorGraph) error
 
-	ActionQuery(resource *ProjectMonitorGraph, input *QueryGraphInput) (*QueryGraphOutput, error)
-
-	CollectionActionQuery(resource *ProjectMonitorGraphCollection, input *QueryGraphInput) (*QueryGraphOutputCollection, error)
+	CollectionActionQuery(resource *ProjectMonitorGraphCollection, input *QueryGraphInput) (*QueryProjectGraphOutput, error)
 }
 
 func newProjectMonitorGraphClient(apiClient *Client) *ProjectMonitorGraphClient {
@@ -124,14 +120,8 @@ func (c *ProjectMonitorGraphClient) Delete(container *ProjectMonitorGraph) error
 	return c.apiClient.Ops.DoResourceDelete(ProjectMonitorGraphType, &container.Resource)
 }
 
-func (c *ProjectMonitorGraphClient) ActionQuery(resource *ProjectMonitorGraph, input *QueryGraphInput) (*QueryGraphOutput, error) {
-	resp := &QueryGraphOutput{}
-	err := c.apiClient.Ops.DoAction(ProjectMonitorGraphType, "query", &resource.Resource, input, resp)
-	return resp, err
-}
-
-func (c *ProjectMonitorGraphClient) CollectionActionQuery(resource *ProjectMonitorGraphCollection, input *QueryGraphInput) (*QueryGraphOutputCollection, error) {
-	resp := &QueryGraphOutputCollection{}
+func (c *ProjectMonitorGraphClient) CollectionActionQuery(resource *ProjectMonitorGraphCollection, input *QueryGraphInput) (*QueryProjectGraphOutput, error) {
+	resp := &QueryProjectGraphOutput{}
 	err := c.apiClient.Ops.DoCollectionAction(ProjectMonitorGraphType, "query", &resource.Collection, input, resp)
 	return resp, err
 }

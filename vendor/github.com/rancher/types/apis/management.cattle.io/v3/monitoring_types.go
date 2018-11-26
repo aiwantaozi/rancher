@@ -33,6 +33,7 @@ const (
 	MonitoringConditionAlertmaanagerDeployed     condition.Cond = "AlertmanagerDeployed"
 	MonitoringConditionNodeExporterDeployed      condition.Cond = "NodeExporterDeployed"
 	MonitoringConditionKubeStateExporterDeployed condition.Cond = "KubeStateExporterDeployed"
+	MonitoringConditionMetricExpressionDeployed  condition.Cond = "MetricExpressionDeployed"
 )
 
 type ClusterMonitorGraph struct {
@@ -43,7 +44,7 @@ type ClusterMonitorGraph struct {
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#metadata
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec MonitorGraphSpec `json:"spec"`
+	Spec ClusterMonitorGraphSpec `json:"spec"`
 }
 
 type ProjectMonitorGraph struct {
@@ -54,28 +55,33 @@ type ProjectMonitorGraph struct {
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#metadata
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec MonitorGraphSpec `json:"spec"`
+	Spec ProjectMonitorGraphSpec `json:"spec"`
 }
 
-type MonitorGraphSpec struct {
-	Enable                 bool              `json:"enable,omitempty" norman:"required,default=true"`
-	Title                  string            `json:"title,omitempty"`
+type ClusterMonitorGraphSpec struct {
+	ClusterName         string `json:"clusterName" norman:"type=reference[cluster]"`
+	ResourceType        string `json:"resourceType,omitempty"  norman:"type=enum,options=node|cluster|etcd|apiserver|scheduler|controllermanager|fluentd"`
+	DisplayResourceType string `json:"displayResourceType,omitempty" norman:"type=enum,options=node|cluster|etcd|kube-component|rancher-component"`
+	CommonMonitorGraphSpec
+}
+
+type ProjectMonitorGraphSpec struct {
+	ProjectName         string `json:"projectName" norman:"type=reference[project]"`
+	ResourceType        string `json:"resourceType,omitempty" norman:"type=enum,options=workload|pod|container"`
+	DisplayResourceType string `json:"displayResourceType,omitempty" norman:"type=enum,options=workload|pod|container"`
+	CommonMonitorGraphSpec
+}
+
+type CommonMonitorGraphSpec struct {
 	Description            string            `json:"description,omitempty"`
-	Thresholds             float64           `json:"thresholds,omitempty" norman:"type=float"`
 	MetricsSelector        map[string]string `json:"metricsSelector,omitempty"`
 	DetailsMetricsSelector map[string]string `json:"detailsMetricsSelector,omitempty"`
-	XAxis                  XAxis             `json:"xAxis,omitempty"`
 	YAxis                  YAxis             `json:"yAxis,omitempty"`
 	Priority               int               `json:"priority,omitempty"`
 	Type                   string            `json:"type,omitempty" norman:"type=enum,options=graph|singlestat"`
 }
 
-type XAxis struct {
-	Show bool `json:"show,omitempty"`
-}
-
 type YAxis struct {
-	Show bool   `json:"show,omitempty"`
 	Unit string `json:"unit,omitempty"`
 }
 
@@ -97,55 +103,70 @@ type MonitorMetricSpec struct {
 }
 
 type QueryGraphInput struct {
-	From            string            `json:"from,omitempty"`
-	To              string            `json:"to,omitempty"`
-	Interval        string            `json:"interval,omitempty"`
-	MetricParams    map[string]string `json:"metricParams,omitempty"`
-	GraphSelector   map[string]string `json:"graphSelector,omitempty"`
-	IsDetails       bool              `json:"isDetails,omitempty"`
-	IsInstanceQuery bool              `json:"isInstanceQuery,omitempty"`
+	From         string            `json:"from,omitempty"`
+	To           string            `json:"to,omitempty"`
+	Interval     string            `json:"interval,omitempty"`
+	MetricParams map[string]string `json:"metricParams,omitempty"`
+	Filters      map[string]string `json:"Filters,omitempty"`
+	IsDetails    bool              `json:"isDetails,omitempty"`
 }
 
-type QueryGraphOutput struct {
-	Type string `json:"type"`
-	QueryGraph
+type QueryClusterGraphOutput struct {
+	Type string              `json:"type,omitempty"`
+	Data []QueryClusterGraph `json:"data,omitempty"`
 }
 
-type QueryGraphOutputCollection struct {
-	Type string       `json:"type,omitempty"`
-	Data []QueryGraph `json:"data,omitempty"`
+type QueryClusterGraph struct {
+	GraphName string        `json:"graphID" norman:"type=reference[clusterMonitorGraph]"`
+	Series    []*TimeSeries `json:"series" norman:"type=array[reference[timeSeries]]"`
 }
 
-type QueryGraph struct {
-	Graph  MonitorGraphSpec `json:"graph"`
-	Series []*Serie         `json:"series" norman:"type=array[reference[serie]]"`
+type QueryProjectGraphOutput struct {
+	Type string              `json:"type,omitempty"`
+	Data []QueryProjectGraph `json:"data,omitempty"`
 }
 
-type QueryMetricInput struct {
+type QueryProjectGraph struct {
+	GraphName string        `json:"graphID" norman:"type=reference[projectMonitorGraph]"`
+	Series    []*TimeSeries `json:"series" norman:"type=array[reference[timeSeries]]"`
+}
+
+type QueryClusterMetricInput struct {
+	ClusterName string `json:"clusterName" norman:"type=reference[cluster]"`
+	CommonQueryMetricInput
+}
+
+type QueryProjectMetricInput struct {
+	ProjectName string `json:"projectName" norman:"type=reference[project]"`
+	CommonQueryMetricInput
+}
+
+type CommonQueryMetricInput struct {
 	From     string `json:"from,omitempty"`
 	To       string `json:"to,omitempty"`
 	Interval string `json:"interval,omitempty"`
-	During   string `json:"during,omitempty"`
 	Expr     string `json:"expr,omitempty" norman:"required"`
 }
 
 type QueryMetricOutput struct {
-	Type   string   `json:"type,omitempty"`
-	Series []*Serie `json:"series" norman:"type=array[reference[serie]]"`
-}
-
-type Serie struct {
-	TimeSeries
-	Expression string `json:"expression,omitempty"`
+	Type   string        `json:"type,omitempty"`
+	Series []*TimeSeries `json:"series" norman:"type=array[reference[timeSeries]]"`
 }
 
 type TimeSeries struct {
-	Name   string            `json:"name"`
-	Points [][]float64       `json:"points" norman:"type=array[array[float]]"`
-	Tags   map[string]string `json:"tags"`
+	Name   string      `json:"name"`
+	Points [][]float64 `json:"points" norman:"type=array[array[float]]"`
 }
 
 type MetricNamesOutput struct {
 	Type  string   `json:"type,omitempty"`
 	Names []string `json:"names" norman:"type=array[string]"`
+}
+
+type ClusterMetricNamesInput struct {
+	ClusterName string `json:"clusterName" norman:"type=reference[cluster]"`
+}
+
+type ProjectMetricNamesInput struct {
+	ProjectName string `json:"projectName" norman:"type=reference[project]"`
 }

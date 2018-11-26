@@ -54,9 +54,13 @@ type MonitorMetricOperations interface {
 	ByID(id string) (*MonitorMetric, error)
 	Delete(container *MonitorMetric) error
 
-	CollectionActionListmetricname(resource *MonitorMetricCollection) (*MetricNamesOutput, error)
+	CollectionActionListclustermetricname(resource *MonitorMetricCollection, input *ClusterMetricNamesInput) (*MetricNamesOutput, error)
 
-	CollectionActionQuery(resource *MonitorMetricCollection, input *QueryMetricInput) (*QueryMetricOutput, error)
+	CollectionActionListprojectmetricname(resource *MonitorMetricCollection, input *ProjectMetricNamesInput) (*MetricNamesOutput, error)
+
+	CollectionActionQuerycluster(resource *MonitorMetricCollection, input *QueryClusterMetricInput) (*QueryMetricOutput, error)
+
+	CollectionActionQueryproject(resource *MonitorMetricCollection, input *QueryProjectMetricInput) (*QueryMetricOutput, error)
 }
 
 func newMonitorMetricClient(apiClient *Client) *MonitorMetricClient {
@@ -110,14 +114,26 @@ func (c *MonitorMetricClient) Delete(container *MonitorMetric) error {
 	return c.apiClient.Ops.DoResourceDelete(MonitorMetricType, &container.Resource)
 }
 
-func (c *MonitorMetricClient) CollectionActionListmetricname(resource *MonitorMetricCollection) (*MetricNamesOutput, error) {
+func (c *MonitorMetricClient) CollectionActionListclustermetricname(resource *MonitorMetricCollection, input *ClusterMetricNamesInput) (*MetricNamesOutput, error) {
 	resp := &MetricNamesOutput{}
-	err := c.apiClient.Ops.DoCollectionAction(MonitorMetricType, "listmetricname", &resource.Collection, nil, resp)
+	err := c.apiClient.Ops.DoCollectionAction(MonitorMetricType, "listclustermetricname", &resource.Collection, input, resp)
 	return resp, err
 }
 
-func (c *MonitorMetricClient) CollectionActionQuery(resource *MonitorMetricCollection, input *QueryMetricInput) (*QueryMetricOutput, error) {
+func (c *MonitorMetricClient) CollectionActionListprojectmetricname(resource *MonitorMetricCollection, input *ProjectMetricNamesInput) (*MetricNamesOutput, error) {
+	resp := &MetricNamesOutput{}
+	err := c.apiClient.Ops.DoCollectionAction(MonitorMetricType, "listprojectmetricname", &resource.Collection, input, resp)
+	return resp, err
+}
+
+func (c *MonitorMetricClient) CollectionActionQuerycluster(resource *MonitorMetricCollection, input *QueryClusterMetricInput) (*QueryMetricOutput, error) {
 	resp := &QueryMetricOutput{}
-	err := c.apiClient.Ops.DoCollectionAction(MonitorMetricType, "query", &resource.Collection, input, resp)
+	err := c.apiClient.Ops.DoCollectionAction(MonitorMetricType, "querycluster", &resource.Collection, input, resp)
+	return resp, err
+}
+
+func (c *MonitorMetricClient) CollectionActionQueryproject(resource *MonitorMetricCollection, input *QueryProjectMetricInput) (*QueryMetricOutput, error) {
+	resp := &QueryMetricOutput{}
+	err := c.apiClient.Ops.DoCollectionAction(MonitorMetricType, "queryproject", &resource.Collection, input, resp)
 	return resp, err
 }

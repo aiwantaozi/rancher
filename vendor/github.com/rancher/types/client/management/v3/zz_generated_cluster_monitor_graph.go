@@ -7,11 +7,12 @@ import (
 const (
 	ClusterMonitorGraphType                        = "clusterMonitorGraph"
 	ClusterMonitorGraphFieldAnnotations            = "annotations"
+	ClusterMonitorGraphFieldClusterID              = "clusterId"
 	ClusterMonitorGraphFieldCreated                = "created"
 	ClusterMonitorGraphFieldCreatorID              = "creatorId"
 	ClusterMonitorGraphFieldDescription            = "description"
 	ClusterMonitorGraphFieldDetailsMetricsSelector = "detailsMetricsSelector"
-	ClusterMonitorGraphFieldEnable                 = "enable"
+	ClusterMonitorGraphFieldDisplayResourceType    = "displayResourceType"
 	ClusterMonitorGraphFieldLabels                 = "labels"
 	ClusterMonitorGraphFieldMetricsSelector        = "metricsSelector"
 	ClusterMonitorGraphFieldName                   = "name"
@@ -19,22 +20,21 @@ const (
 	ClusterMonitorGraphFieldOwnerReferences        = "ownerReferences"
 	ClusterMonitorGraphFieldPriority               = "priority"
 	ClusterMonitorGraphFieldRemoved                = "removed"
-	ClusterMonitorGraphFieldThresholds             = "thresholds"
-	ClusterMonitorGraphFieldTitle                  = "title"
+	ClusterMonitorGraphFieldResourceType           = "resourceType"
 	ClusterMonitorGraphFieldType                   = "type"
 	ClusterMonitorGraphFieldUUID                   = "uuid"
-	ClusterMonitorGraphFieldXAxis                  = "xAxis"
 	ClusterMonitorGraphFieldYAxis                  = "yAxis"
 )
 
 type ClusterMonitorGraph struct {
 	types.Resource
 	Annotations            map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+	ClusterID              string            `json:"clusterId,omitempty" yaml:"clusterId,omitempty"`
 	Created                string            `json:"created,omitempty" yaml:"created,omitempty"`
 	CreatorID              string            `json:"creatorId,omitempty" yaml:"creatorId,omitempty"`
 	Description            string            `json:"description,omitempty" yaml:"description,omitempty"`
 	DetailsMetricsSelector map[string]string `json:"detailsMetricsSelector,omitempty" yaml:"detailsMetricsSelector,omitempty"`
-	Enable                 bool              `json:"enable,omitempty" yaml:"enable,omitempty"`
+	DisplayResourceType    string            `json:"displayResourceType,omitempty" yaml:"displayResourceType,omitempty"`
 	Labels                 map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	MetricsSelector        map[string]string `json:"metricsSelector,omitempty" yaml:"metricsSelector,omitempty"`
 	Name                   string            `json:"name,omitempty" yaml:"name,omitempty"`
@@ -42,11 +42,9 @@ type ClusterMonitorGraph struct {
 	OwnerReferences        []OwnerReference  `json:"ownerReferences,omitempty" yaml:"ownerReferences,omitempty"`
 	Priority               int64             `json:"priority,omitempty" yaml:"priority,omitempty"`
 	Removed                string            `json:"removed,omitempty" yaml:"removed,omitempty"`
-	Thresholds             *float64          `json:"thresholds,omitempty" yaml:"thresholds,omitempty"`
-	Title                  string            `json:"title,omitempty" yaml:"title,omitempty"`
+	ResourceType           string            `json:"resourceType,omitempty" yaml:"resourceType,omitempty"`
 	Type                   string            `json:"type,omitempty" yaml:"type,omitempty"`
 	UUID                   string            `json:"uuid,omitempty" yaml:"uuid,omitempty"`
-	XAxis                  *XAxis            `json:"xAxis,omitempty" yaml:"xAxis,omitempty"`
 	YAxis                  *YAxis            `json:"yAxis,omitempty" yaml:"yAxis,omitempty"`
 }
 
@@ -68,9 +66,9 @@ type ClusterMonitorGraphOperations interface {
 	ByID(id string) (*ClusterMonitorGraph, error)
 	Delete(container *ClusterMonitorGraph) error
 
-	ActionQuery(resource *ClusterMonitorGraph, input *QueryGraphInput) (*QueryGraphOutput, error)
+	ActionQuery(resource *ClusterMonitorGraph, input *QueryGraphInput) (*QueryClusterGraphOutput, error)
 
-	CollectionActionQuery(resource *ClusterMonitorGraphCollection, input *QueryGraphInput) (*QueryGraphOutputCollection, error)
+	CollectionActionQuery(resource *ClusterMonitorGraphCollection, input *QueryGraphInput) (*QueryClusterGraphOutput, error)
 }
 
 func newClusterMonitorGraphClient(apiClient *Client) *ClusterMonitorGraphClient {
@@ -124,14 +122,14 @@ func (c *ClusterMonitorGraphClient) Delete(container *ClusterMonitorGraph) error
 	return c.apiClient.Ops.DoResourceDelete(ClusterMonitorGraphType, &container.Resource)
 }
 
-func (c *ClusterMonitorGraphClient) ActionQuery(resource *ClusterMonitorGraph, input *QueryGraphInput) (*QueryGraphOutput, error) {
-	resp := &QueryGraphOutput{}
+func (c *ClusterMonitorGraphClient) ActionQuery(resource *ClusterMonitorGraph, input *QueryGraphInput) (*QueryClusterGraphOutput, error) {
+	resp := &QueryClusterGraphOutput{}
 	err := c.apiClient.Ops.DoAction(ClusterMonitorGraphType, "query", &resource.Resource, input, resp)
 	return resp, err
 }
 
-func (c *ClusterMonitorGraphClient) CollectionActionQuery(resource *ClusterMonitorGraphCollection, input *QueryGraphInput) (*QueryGraphOutputCollection, error) {
-	resp := &QueryGraphOutputCollection{}
+func (c *ClusterMonitorGraphClient) CollectionActionQuery(resource *ClusterMonitorGraphCollection, input *QueryGraphInput) (*QueryClusterGraphOutput, error) {
+	resp := &QueryClusterGraphOutput{}
 	err := c.apiClient.Ops.DoCollectionAction(ClusterMonitorGraphType, "query", &resource.Collection, input, resp)
 	return resp, err
 }
