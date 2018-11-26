@@ -22,12 +22,10 @@ import (
 	"github.com/rancher/rancher/pkg/settings"
 	"github.com/rancher/rancher/pkg/systemaccount"
 	"github.com/rancher/rancher/pkg/systemtemplate"
-	clusterv3schema "github.com/rancher/types/apis/cluster.cattle.io/v3/schema"
 	corev1 "github.com/rancher/types/apis/core/v1"
 	mgmtv3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	projectv3 "github.com/rancher/types/apis/project.cattle.io/v3"
 	rbacv1 "github.com/rancher/types/apis/rbac.authorization.k8s.io/v1"
-	clusterv3client "github.com/rancher/types/client/cluster/v3"
 	projectv3client "github.com/rancher/types/client/project/v3"
 	"github.com/rancher/types/config"
 	"github.com/rancher/types/user"
@@ -117,11 +115,8 @@ func (cd *clusterDeploy) doSync(cluster *mgmtv3.Cluster) error {
 	if err != nil {
 		return err
 	}
-	deployProjectName, err := cd.deployPrometheusOperator(cluster)
+	_, err = cd.deployPrometheusOperator(cluster)
 	if err != nil {
-		return err
-	}
-	if err = cd.deploySystemMetricExpression(cluster, deployProjectName); err != nil {
 		return err
 	}
 
@@ -555,82 +550,4 @@ func deploySystemMonitoring(cattleAppsGetter projectv3.AppsGetter, cattleTemplat
 	}
 
 	return nil
-}
-
-func (cd *clusterDeploy) deploySystemMetricExpression(cluster *mgmtv3.Cluster, appProjectName string) error {
-	if appProjectName == "" {
-		return fmt.Errorf("appProjectName is empty")
-	}
-	_, projectID := ref.Parse(appProjectName)
-	appName, appTargetNamespace := monitoring.ClusterMonitoringMetricsInfo()
-	clusterCreatorID := cluster.Annotations[monitoring.CattleCreatorIDAnnotationKey]
-
-	// detect App "metric expression"
-	_, err := mgmtv3.ClusterConditionMetricExpressionDeployed.Do(cluster, func() (runtime.Object, error) {
-		app, err := cd.appsGetter.Apps(projectID).Get(appName, metav1.GetOptions{})
-		if err != nil && !k8serrors.IsNotFound(err) {
-			return nil, errors.Wrapf(err, "failed to query %q App in %s Project", appName, projectID)
-		}
-		if app.Name == appName {
-			if app.DeletionTimestamp != nil {
-				return nil, fmt.Errorf("stale %q App in %s Project is still on terminating", appName, projectID)
-			}
-
-			return nil, nil
-		}
-
-		// detect TemplateVersion "rancher-monitoring"
-		catalogID := settings.SystemMonitoringCatalogID.Get()
-		templateVersionID, err := common.ParseExternalID(catalogID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse catalog ID %q, %v", catalogID, err)
-		}
-		if _, err := cd.templateVersions.Get(templateVersionID, metav1.GetOptions{}); err != nil {
-			return nil, fmt.Errorf("failed to find catalog by ID %q, %v", catalogID, err)
-		}
-
-		kubeConfig, err := clustermanager.ToRESTConfig(cluster, cd.clusterManager.ScaledContext)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to create RESTConfig for cluster %s", cluster.Name)
-		}
-
-		factory, err := crd.NewFactoryFromClient(*kubeConfig)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to create CRD factory for cluster %s", cluster.Name)
-		}
-
-		factory.BatchCreateCRDs(cd.ctx, config.UserStorageContext, cd.clusterManager.ScaledContext.Schemas, &clusterv3schema.Version,
-			clusterv3client.MonitorMetricType,
-			clusterv3client.MonitorGraphType,
-		)
-
-		factory.BatchWait()
-
-		// create App "metric expression"
-		app = &projectv3.App{
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					monitoring.CattleCreatorIDAnnotationKey: clusterCreatorID,
-				},
-				Labels:    monitoring.OwnedLabels(appName, appTargetNamespace, monitoring.SystemLevel),
-				Name:      appName,
-				Namespace: projectID,
-			},
-			Spec: projectv3.AppSpec{
-				Answers: map[string]string{
-					"metric-expression.enabled": "true",
-				},
-				Description:     "Metric expression for Rancher Monitoring",
-				ExternalID:      catalogID,
-				ProjectName:     appProjectName,
-				TargetNamespace: appTargetNamespace,
-			},
-		}
-
-		if _, err := cd.appsGetter.Apps(projectID).Create(app); err != nil && !k8serrors.IsAlreadyExists(err) {
-			return nil, errors.Wrapf(err, "failed to create %q App", appName)
-		}
-		return nil, nil
-	})
-	return err
 }

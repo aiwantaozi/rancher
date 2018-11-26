@@ -1,4 +1,4 @@
-package stats
+package monitor
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 
 	promapi "github.com/prometheus/client_golang/api"
 	promapiv1 "github.com/prometheus/client_golang/api/prometheus/v1"
+
 	"github.com/prometheus/common/model"
 	"github.com/rancher/rancher/pkg/clustermanager"
 	"github.com/rancher/types/config"
@@ -28,20 +29,7 @@ type Queries struct {
 	eg  *errgroup.Group
 }
 
-func InitPromQuery(id string, start, end time.Time, step time.Duration, expr, format string, extraTags map[string]string, isInstanceQuery bool) *PrometheusQuery {
-	return &PrometheusQuery{
-		ID:              id,
-		Start:           start,
-		End:             end,
-		Step:            step,
-		Expr:            expr,
-		LegendFormat:    format,
-		ExtraAddedTags:  extraTags,
-		IsInstanceQuery: isInstanceQuery,
-	}
-}
-
-func NewPrometheusQuery(userContext *config.UserContext, clusterName string, clustermanager *clustermanager.Manager, dialerFactory dialer.Factory) (*Queries, error) {
+func NewPrometheusQuery(userContext *config.UserContext, clusterName, authToken string, clustermanager *clustermanager.Manager, dialerFactory dialer.Factory) (*Queries, error) {
 	dial, err := dialerFactory.ClusterDialer(clusterName)
 	if err != nil {
 		return nil, fmt.Errorf("get dail from usercontext failed, %v", err)
@@ -52,14 +40,14 @@ func NewPrometheusQuery(userContext *config.UserContext, clusterName string, clu
 		return nil, err
 	}
 
-	api, err := newPrometheusAPI(dial, endpoint)
+	api, err := newPrometheusAPI(dial, endpoint, authToken)
 	if err != nil {
 		return nil, err
 	}
 	return newQuery(api), nil
 }
 
-func (q *Queries) QueryRange(query *PrometheusQuery) (TimeResponseSeriesSlice, error) {
+func (q *Queries) QueryRange(query *PrometheusQuery) ([]*TimeSeries, error) {
 	fmt.Println("---expr:", query.Expr)
 	value, err := q.api.QueryRange(q.ctx, query.Expr, query.getRange())
 	if err != nil {
@@ -72,26 +60,31 @@ func (q *Queries) QueryRange(query *PrometheusQuery) (TimeResponseSeriesSlice, e
 	return seriesSlice, nil
 }
 
-func (q *Queries) Query(query *PrometheusQuery) (TimeResponseSeriesSlice, error) {
+func (q *Queries) Query(query *PrometheusQuery) ([]*TimeSeries, error) {
 	fmt.Println("---expr:", query.Expr)
 
 	value, err := q.api.Query(q.ctx, query.Expr, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("query range failed, %v, expression: %s", err, query.Expr)
 	}
-	seriesSlice, err := parseVector(value, query)
+	series, err := parseVector(value, query)
 	if err != nil {
 		return nil, fmt.Errorf("parse prometheus query result failed, %v", err)
 	}
-	return seriesSlice, nil
+
+	if series == nil {
+		return nil, nil
+	}
+
+	return []*TimeSeries{series}, nil
 }
 
-func (q *Queries) Do(querys []*PrometheusQuery) (TimeResponseSeriesSlice, error) {
+func (q *Queries) Do(querys []*PrometheusQuery) (map[string][]*TimeSeries, error) {
 	smap := &sync.Map{}
 	for _, v := range querys {
 		query := v
 		q.eg.Go(func() error {
-			var seriesSlice TimeResponseSeriesSlice
+			var seriesSlice []*TimeSeries
 			var err error
 			if query.IsInstanceQuery {
 				seriesSlice, err = q.Query(query)
@@ -111,11 +104,13 @@ func (q *Queries) Do(querys []*PrometheusQuery) (TimeResponseSeriesSlice, error)
 	if err := q.eg.Wait(); err != nil {
 		return nil, err
 	}
-	rtn := TimeResponseSeriesSlice{}
+
+	rtn := make(map[string][]*TimeSeries)
 	smap.Range(func(k, v interface{}) bool {
-		series := v.(TimeResponseSeriesSlice)
-		for _, s := range series {
-			rtn = append(rtn, s)
+		key := k.(string)
+		series := v.([]*TimeSeries)
+		if len(series) != 0 {
+			rtn[key] = series
 		}
 		return true
 	})
@@ -136,6 +131,18 @@ func (q *Queries) GetLabelValues(labelName string) ([]string, error) {
 	return metricNames, nil
 }
 
+func InitPromQuery(id string, start, end time.Time, step time.Duration, expr, format string, isInstanceQuery bool) *PrometheusQuery {
+	return &PrometheusQuery{
+		ID:              id,
+		Start:           start,
+		End:             end,
+		Step:            step,
+		Expr:            expr,
+		LegendFormat:    format,
+		IsInstanceQuery: isInstanceQuery,
+	}
+}
+
 func newQuery(api promapiv1.API) *Queries {
 	q := &Queries{
 		ctx: context.Background(),
@@ -145,10 +152,35 @@ func newQuery(api promapiv1.API) *Queries {
 	return q
 }
 
-func newPrometheusAPI(dial dialer.Dialer, url string) (promapiv1.API, error) {
+type authTransport struct {
+	*http.Transport
+
+	token string
+}
+
+func (auth authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", auth.token))
+	return auth.Transport.RoundTrip(req)
+}
+
+func newHTTPTransport(dial dialer.Dialer) *http.Transport {
+	return &http.Transport{
+		Dial: dial,
+		ExpectContinueTimeout: 1 * time.Second,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+	}
+}
+
+func newPrometheusAPI(dial dialer.Dialer, url, token string) (promapiv1.API, error) {
+	auth := authTransport{
+		Transport: newHTTPTransport(dial),
+		token:     token,
+	}
+
 	cfg := promapi.Config{
 		Address:      url,
-		RoundTripper: newHTTPTransport(dial),
+		RoundTripper: auth,
 	}
 
 	client, err := promapi.NewClient(cfg)
@@ -158,16 +190,7 @@ func newPrometheusAPI(dial dialer.Dialer, url string) (promapiv1.API, error) {
 	return promapiv1.NewAPI(client), nil
 }
 
-func newHTTPTransport(dial dialer.Dialer) *http.Transport {
-	return &http.Transport{
-		Dial:                  dial,
-		ExpectContinueTimeout: 1 * time.Second,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-	}
-}
-
-func parseVector(value model.Value, query *PrometheusQuery) (TimeResponseSeriesSlice, error) {
+func parseVector(value model.Value, query *PrometheusQuery) (*TimeSeries, error) {
 	data, ok := value.(model.Vector)
 	if !ok {
 		return nil, fmt.Errorf("Unsupported result format: %s", value.Type().String())
@@ -178,13 +201,9 @@ func parseVector(value model.Value, query *PrometheusQuery) (TimeResponseSeriesS
 	}
 
 	vec := data[0]
-	series := ResponseSeries{
-		ID:         query.ID,
-		Expression: query.Expr,
-		TimeSeries: TimeSeries{
-			Name: formatLegend(vec.Metric, query),
-			Tags: map[string]string{},
-		},
+	series := TimeSeries{
+		Name: formatLegend(vec.Metric, query),
+		Tags: map[string]string{},
 	}
 
 	for k, v := range vec.Metric {
@@ -194,12 +213,13 @@ func parseVector(value model.Value, query *PrometheusQuery) (TimeResponseSeriesS
 	po, isValid := NewTimePoint(float64(vec.Value), float64(vec.Timestamp.Unix()*1000))
 	if isValid {
 		series.Points = append(series.Points, po)
+		return &series, nil
 	}
 
-	return TimeResponseSeriesSlice{&series}, nil
+	return nil, nil
 }
 
-func parseMatrix(value model.Value, query *PrometheusQuery) (TimeResponseSeriesSlice, error) {
+func parseMatrix(value model.Value, query *PrometheusQuery) ([]*TimeSeries, error) {
 	data, ok := value.(model.Matrix)
 	if !ok {
 		return nil, fmt.Errorf("Unsupported result format: %s", value.Type().String())
@@ -209,31 +229,22 @@ func parseMatrix(value model.Value, query *PrometheusQuery) (TimeResponseSeriesS
 		return nil, nil
 	}
 
-	var seriesSlice TimeResponseSeriesSlice
+	var seriesSlice []*TimeSeries
 	for _, v := range data {
-		series := ResponseSeries{
-			ID:         query.ID,
-			Expression: query.Expr,
-			TimeSeries: TimeSeries{
-				Name: formatLegend(v.Metric, query),
-				Tags: map[string]string{},
-			},
+		series := TimeSeries{
+			Name: formatLegend(v.Metric, query),
+			Tags: map[string]string{},
 		}
 
 		for k, v := range v.Metric {
 			series.Tags[string(k)] = string(v)
 		}
 
-		for k, v := range query.ExtraAddedTags {
-			series.Tags[k] = v
-		}
-
-		for _, k := range v.Values {
-			po, isValid := NewTimePoint(float64(k.Value), float64(k.Timestamp.Unix()*1000))
+		for _, v := range v.Values {
+			po, isValid := NewTimePoint(float64(v.Value), float64(v.Timestamp.Unix()*1000))
 			if isValid {
 				series.Points = append(series.Points, po)
 			}
-
 		}
 
 		seriesSlice = append(seriesSlice, &series)

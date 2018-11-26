@@ -14,6 +14,8 @@ const (
 	CattleCreatorIDAnnotationKey = "field.cattle.io/creatorId"
 	CattleProjectIDAnnotationKey = "field.cattle.io/projectId"
 	CattleProjectIDLabelKey      = "field.cattle.io/projectId"
+	ClusterAppName               = "cluster-monitoring"
+	ProjectAppName               = "project-monitoring"
 )
 
 type Level string
@@ -37,8 +39,6 @@ const (
 
 	// The names of App
 	systemAppName           = "system-monitoring"
-	clusterAppName          = "cluster-monitoring"
-	projectAppName          = "project-monitoring"
 	metricExpressionAppName = "metric-expression"
 
 	// The headless service name of Prometheus
@@ -82,7 +82,7 @@ func SystemMonitoringInfo() (appName, appTargetNamespace string) {
 }
 
 func ClusterMonitoringInfo() (appName, appTargetNamespace string) {
-	return clusterAppName, cattleNamespaceName
+	return ClusterAppName, cattleNamespaceName
 }
 
 func ClusterMonitoringMetricsInfo() (appName, appTargetNamespace string) {
@@ -90,7 +90,7 @@ func ClusterMonitoringMetricsInfo() (appName, appTargetNamespace string) {
 }
 
 func ProjectMonitoringInfo(project *mgmtv3.Project) (appName, appTargetNamespace string) {
-	return projectAppName, fmt.Sprintf("%s-%s", cattleNamespaceName, project.Name)
+	return ProjectAppName, fmt.Sprintf("%s-%s", cattleNamespaceName, project.Name)
 }
 
 func ClusterPrometheusEndpoint() (headlessServiceName, namespace, port string) {

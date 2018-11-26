@@ -40,10 +40,6 @@ func (ph *projectHandler) sync(key string, project *mgmtv3.Project) (runtime.Obj
 		return project, errors.Wrapf(err, "failed to find Cluster %s", project.Spec.ClusterName)
 	}
 
-	if project.Spec.EnableProjectMonitoring == nil {
-		return project, nil
-	}
-
 	projectTag := getProjectTag(project)
 	src := project
 	cpy := src.DeepCopy()
@@ -61,6 +57,25 @@ func (ph *projectHandler) sync(key string, project *mgmtv3.Project) (runtime.Obj
 }
 
 func (ph *projectHandler) doSync(projectTag string, project *mgmtv3.Project) error {
+	_, err := mgmtv3.ProjectConditionMetricExpressionDeployed.DoUntilTrue(project, func() (runtime.Object, error) {
+		projectName := fmt.Sprintf("%s:%s", project.Spec.ClusterName, project.Name)
+
+		tmpDate := templateData{ProjectName: projectName}
+		expressions, err := generate(ProjectMetricExpression, tmpDate)
+		if err != nil {
+			return nil, err
+		}
+
+		return project, deployAddonWithKubectl(project.Name, expressions)
+	})
+	if err != nil {
+		return fmt.Errorf("apply metric expression for project %s failed, %v", projectTag, err)
+	}
+
+	if project.Spec.EnableProjectMonitoring == nil {
+		return nil
+	}
+
 	enableProjectMonitoring := *project.Spec.EnableProjectMonitoring
 	appName, appTargetNamespace := monitoring.ProjectMonitoringInfo(project)
 

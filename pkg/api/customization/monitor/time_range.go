@@ -1,4 +1,4 @@
-package stats
+package monitor
 
 import (
 	"fmt"
@@ -16,8 +16,8 @@ func NewTimeRange(from, to string) *TimeRange {
 	}
 }
 
-func NewTimePoint(value, timestamp float64) (po [2]float64, isValid bool) {
-	po = [2]float64{value, timestamp}
+func NewTimePoint(value, timestamp float64) (po []float64, isValid bool) {
+	po = []float64{value, timestamp}
 	if math.IsNaN(value) {
 		return po, false
 	}

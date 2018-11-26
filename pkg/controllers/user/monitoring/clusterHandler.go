@@ -1,9 +1,12 @@
 package monitoring
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
 	"reflect"
 	"strings"
 	"time"
@@ -122,6 +125,12 @@ func (ch *clusterHandler) doSync(clusterTag string, cluster *mgmtv3.Cluster) err
 				return errors.Wrapf(err, "failed to grant prometheus RBAC into Cluster %s", clusterTag)
 			}
 
+			if err := deployAddonWithKubectl(ch.clusterName, ClusterMetricExpression); err != nil {
+				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
+				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
+				return errors.Wrapf(err, "failed to deploy metric expression into Cluster %s", clusterTag)
+			}
+
 			if err := ch.app.deployClusterMonitoring(appName, appTargetNamespace, appServiceAccountName, appProjectName, cluster, etcdTLSConfigs, systemComponentMap); err != nil {
 				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
 				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
@@ -162,6 +171,12 @@ func (ch *clusterHandler) doSync(clusterTag string, cluster *mgmtv3.Cluster) err
 				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
 				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
 				return errors.Wrapf(err, "failed to revoke prometheus RBAC from Cluster %s", clusterTag)
+			}
+
+			if err := removeAddonWithKubectl(ch.clusterName, ClusterMetricExpression); err != nil {
+				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
+				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
+				return errors.Wrapf(err, "failed to remove metric expression from Cluster %s", clusterTag)
 			}
 
 			mgmtv3.ClusterConditionMonitoringEnabled.False(cluster)
@@ -748,6 +763,28 @@ func (ah *appHandler) withdrawMonitoring(appName, appTargetNamespace string) err
 	}
 
 	return nil
+}
+
+func deployAddonWithKubectl(namespace, addonYaml string) error {
+	buf := bytes.NewBufferString(addonYaml)
+	cmd := exec.Command("kubectl", "apply", "-n", namespace, "-f", "-")
+	cmd.Stdin = buf
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func removeAddonWithKubectl(namespace, addonYaml string) error {
+	buf := bytes.NewBufferString(addonYaml)
+	cmd := exec.Command("kubectl", "delete", "-n", namespace, "-f", "-")
+	cmd.Stdin = buf
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if strings.Contains(err.Error(), "not found") {
+		return nil
+	}
+	return fmt.Errorf("remove addon failed, %v", err)
 }
 
 func getClusterTag(cluster *mgmtv3.Cluster) string {
