@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -66,7 +67,10 @@ func (h *clusterGraphHandler) QuerySeriesAction(actionName string, action *types
 		return err
 	}
 
-	prometheusQuery, err := NewPrometheusQuery(userContext, clusterName, token, h.clustermanager, h.dialerFactory)
+	reqContext, cancel := context.WithTimeout(context.Background(), prometheusReqTimeout)
+	defer cancel()
+
+	prometheusQuery, err := NewPrometheusQuery(reqContext, userContext, clusterName, token, h.clustermanager, h.dialerFactory)
 	if err != nil {
 		return err
 	}
@@ -215,10 +219,19 @@ func getPrometheusQueryID(graphName, graphResoureceType, metricName string) stri
 
 func parseID(ref string) (graphName, resourceType, metricName string) {
 	parts := strings.SplitN(ref, "_", 3)
-	if len(parts) != 3 {
-		return "", "", ""
+
+	if len(parts) < 2 {
+		return parts[0], "", ""
 	}
-	return parts[0], parts[1], parts[2]
+
+	if len(parts) == 2 {
+		return parts[0], parts[1], ""
+	}
+
+	if len(parts) == 3 {
+		return parts[0], parts[1], parts[2]
+	}
+	return parts[0], parts[1], parts[1]
 }
 
 func convertInstance(seriesSlice []*TimeSeries, nodeMap map[string]string, resourceType string) []*v3.TimeSeries {

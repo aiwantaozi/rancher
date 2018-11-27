@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -63,7 +64,10 @@ func (h *projectGraphHandler) QuerySeriesAction(actionName string, action *types
 		return err
 	}
 
-	prometheusQuery, err := NewPrometheusQuery(userContext, clusterName, token, h.clustermanager, h.dialerFactory)
+	reqContext, cancel := context.WithTimeout(context.Background(), prometheusReqTimeout)
+	defer cancel()
+
+	prometheusQuery, err := NewPrometheusQuery(reqContext, userContext, clusterName, token, h.clustermanager, h.dialerFactory)
 	if err != nil {
 		return err
 	}

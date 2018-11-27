@@ -29,7 +29,7 @@ type Queries struct {
 	eg  *errgroup.Group
 }
 
-func NewPrometheusQuery(userContext *config.UserContext, clusterName, authToken string, clustermanager *clustermanager.Manager, dialerFactory dialer.Factory) (*Queries, error) {
+func NewPrometheusQuery(ctx context.Context, userContext *config.UserContext, clusterName, authToken string, clustermanager *clustermanager.Manager, dialerFactory dialer.Factory) (*Queries, error) {
 	dial, err := dialerFactory.ClusterDialer(clusterName)
 	if err != nil {
 		return nil, fmt.Errorf("get dail from usercontext failed, %v", err)
@@ -44,7 +44,7 @@ func NewPrometheusQuery(userContext *config.UserContext, clusterName, authToken 
 	if err != nil {
 		return nil, err
 	}
-	return newQuery(api), nil
+	return newQuery(ctx, api), nil
 }
 
 func (q *Queries) QueryRange(query *PrometheusQuery) ([]*TimeSeries, error) {
@@ -107,10 +107,12 @@ func (q *Queries) Do(querys []*PrometheusQuery) (map[string][]*TimeSeries, error
 
 	rtn := make(map[string][]*TimeSeries)
 	smap.Range(func(k, v interface{}) bool {
-		key := k.(string)
+		key1, key2, _ := parseID(k.(string))
+		key := fmt.Sprintf("%s_%s", key1, key2)
+
 		series := v.([]*TimeSeries)
 		if len(series) != 0 {
-			rtn[key] = series
+			rtn[key] = append(rtn[key], series...)
 		}
 		return true
 	})
@@ -143,9 +145,9 @@ func InitPromQuery(id string, start, end time.Time, step time.Duration, expr, fo
 	}
 }
 
-func newQuery(api promapiv1.API) *Queries {
+func newQuery(ctx context.Context, api promapiv1.API) *Queries {
 	q := &Queries{
-		ctx: context.Background(),
+		ctx: ctx,
 		api: api,
 	}
 	q.eg, q.ctx = errgroup.WithContext(q.ctx)

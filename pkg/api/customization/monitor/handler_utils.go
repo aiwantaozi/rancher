@@ -20,6 +20,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	prometheusReqTimeout = 30 * time.Second
+)
+
 var (
 	defaultQueryDuring = "5m"
 	defaultTo          = "now"
