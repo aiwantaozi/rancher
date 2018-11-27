@@ -357,6 +357,7 @@ func (ah *appHandler) deployProjectMonitoring(appName, appTargetNamespace string
 		"grafana.apiGroup":                monitoring.APIVersion.Group,
 		"grafana.serviceAccountName":      appServiceAccountName,
 		"grafana.persistence.enabled":     "false",
+		"grafana.level":                   "project",
 		"grafana.prometheusDatasourceURL": fmt.Sprintf("http://%s.%s:%s", clusterPrometheusSvcName, clusterPrometheusSvcNamespace, clusterPrometheusPort),
 	}
 

@@ -626,7 +626,7 @@ func (ah *appHandler) deployClusterMonitoring(appName, appTargetNamespace string
 		"prometheus.persistence.enabled":                                          "false",
 		"prometheus.listenLocal":                                                  "true",
 		"prometheus.sidecarsSpec[0].name":                                         "prometheus-agent",
-		"prometheus.sidecarsSpec[0].image":                                        "maiwj/prometheus-auth:0.0.4",
+		"prometheus.sidecarsSpec[0].image":                                        "maiwj/prometheus-auth:0.0.5",
 		"prometheus.sidecarsSpec[0].args[0]":                                      "--log.debug",
 		"prometheus.sidecarsSpec[0].args[1]":                                      "agent",
 		"prometheus.sidecarsSpec[0].args[2]":                                      "start",
