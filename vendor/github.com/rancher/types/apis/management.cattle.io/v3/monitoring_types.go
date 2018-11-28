@@ -107,7 +107,7 @@ type QueryGraphInput struct {
 	To           string            `json:"to,omitempty"`
 	Interval     string            `json:"interval,omitempty"`
 	MetricParams map[string]string `json:"metricParams,omitempty"`
-	Filters      map[string]string `json:"Filters,omitempty"`
+	Filters      map[string]string `json:"filters,omitempty"`
 	IsDetails    bool              `json:"isDetails,omitempty"`
 }
 

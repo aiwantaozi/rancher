@@ -2,7 +2,7 @@ package client
 
 const (
 	QueryGraphInputType              = "queryGraphInput"
-	QueryGraphInputFieldFilters      = "Filters"
+	QueryGraphInputFieldFilters      = "filters"
 	QueryGraphInputFieldFrom         = "from"
 	QueryGraphInputFieldInterval     = "interval"
 	QueryGraphInputFieldIsDetails    = "isDetails"
@@ -11,7 +11,7 @@ const (
 )
 
 type QueryGraphInput struct {
-	Filters      map[string]string `json:"Filters,omitempty" yaml:"Filters,omitempty"`
+	Filters      map[string]string `json:"filters,omitempty" yaml:"filters,omitempty"`
 	From         string            `json:"from,omitempty" yaml:"from,omitempty"`
 	Interval     string            `json:"interval,omitempty" yaml:"interval,omitempty"`
 	IsDetails    bool              `json:"isDetails,omitempty" yaml:"isDetails,omitempty"`
