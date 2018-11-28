@@ -146,7 +146,6 @@ func (d *Deployer) deploy(appName, appTargetNamespace string) error {
 	if _, err := d.appsGetter.Apps(projectID).Create(app); err != nil && !apierrors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create %q App, %v", appName, err)
 	}
-	fmt.Println("----3")
 	d.alertManager.IsDeploy = true
 	return nil
 }
