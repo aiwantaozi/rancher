@@ -30,7 +30,7 @@ const (
 	cattleNamespaceName = "cattle-prometheus"
 
 	// The label info of Namespace
-	CattleMonitoringLabelKey = "monitoring.cattle.io"
+	CattleMonitoringLabelKey = "monitoring.coreos.com"
 
 	// The label info of App, RoleBinding
 	appNameLabelKey            = CattleMonitoringLabelKey + "/appName"
@@ -52,7 +52,7 @@ const (
 var (
 	APIVersion = types.APIVersion{
 		Version: "v1",
-		Group:   "monitoring.native.cattle.io",
+		Group:   "monitoring.coreos.com",
 		Path:    "/v3/project",
 	}
 )
