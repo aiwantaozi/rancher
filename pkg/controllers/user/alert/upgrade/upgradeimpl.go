@@ -1,62 +1,62 @@
 package upgrade
 
-import (
-	"context"
-	"fmt"
+// import (
+// 	"context"
+// 	"fmt"
 
-	"github.com/rancher/rancher/pkg/controllers/user/alert/deployer"
-	"github.com/rancher/rancher/pkg/controllers/user/systemimage"
-	rv1beta2 "github.com/rancher/types/apis/apps/v1beta2"
-	"github.com/rancher/types/config"
-	"k8s.io/api/apps/v1beta2"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-)
+// 	"github.com/rancher/rancher/pkg/controllers/user/alert/deployer"
+// 	"github.com/rancher/rancher/pkg/controllers/user/systemimage"
+// 	rv1beta2 "github.com/rancher/types/apis/apps/v1beta2"
+// 	"github.com/rancher/types/config"
+// 	"k8s.io/api/apps/v1beta2"
+// 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+// )
 
-var (
-	serviceName = "alerting"
-)
+// var (
+// 	serviceName = "alerting"
+// )
 
-type alertService struct {
-	clusterName string
-	deployments rv1beta2.DeploymentInterface
-}
+// type alertService struct {
+// 	clusterName string
+// 	deployments rv1beta2.DeploymentInterface
+// }
 
-func init() {
-	systemimage.RegisterSystemService(serviceName, &alertService{})
-}
+// func init() {
+// 	systemimage.RegisterSystemService(serviceName, &alertService{})
+// }
 
-func (l *alertService) Init(ctx context.Context, cluster *config.UserContext) {
-	l.clusterName = cluster.ClusterName
-	l.deployments = cluster.Apps.Deployments("")
-}
+// func (l *alertService) Init(ctx context.Context, cluster *config.UserContext) {
+// 	l.clusterName = cluster.ClusterName
+// 	l.deployments = cluster.Apps.Deployments("")
+// }
 
-func (l *alertService) Version() (string, error) {
-	deployment := deployer.GetDeployment()
-	return systemimage.DefaultGetVersion(deployment)
-}
+// func (l *alertService) Version() (string, error) {
+// 	deployment := deployer.GetDeployment()
+// 	return systemimage.DefaultGetVersion(deployment)
+// }
 
-func (l *alertService) Upgrade(currentVersion string) (string, error) {
-	deployment := deployer.GetDeployment()
-	newVersion, err := systemimage.DefaultGetVersion(deployment)
-	if err != nil {
-		return "", err
-	}
-	if currentVersion == newVersion {
-		return currentVersion, nil
-	}
+// func (l *alertService) Upgrade(currentVersion string) (string, error) {
+// 	deployment := deployer.GetDeployment()
+// 	newVersion, err := systemimage.DefaultGetVersion(deployment)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	if currentVersion == newVersion {
+// 		return currentVersion, nil
+// 	}
 
-	if err := l.upgradeDeployment(deployment); err != nil {
-		return "", err
-	}
-	return newVersion, nil
-}
+// 	if err := l.upgradeDeployment(deployment); err != nil {
+// 		return "", err
+// 	}
+// 	return newVersion, nil
+// }
 
-func (l *alertService) upgradeDeployment(deployment *v1beta2.Deployment) error {
-	if _, err := l.deployments.Update(deployment); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil
-		}
-		return fmt.Errorf("upgrade system service %s:%s failed, %v", deployment.Namespace, deployment.Name, err)
-	}
-	return nil
-}
+// func (l *alertService) upgradeDeployment(deployment *v1beta2.Deployment) error {
+// 	if _, err := l.deployments.Update(deployment); err != nil {
+// 		if apierrors.IsNotFound(err) {
+// 			return nil
+// 		}
+// 		return fmt.Errorf("upgrade system service %s:%s failed, %v", deployment.Namespace, deployment.Name, err)
+// 	}
+// 	return nil
+// }

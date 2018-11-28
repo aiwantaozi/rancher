@@ -64,11 +64,23 @@ type ConfigSyncer struct {
 	namespaces              v1.NamespaceInterface
 }
 
-func (d *ConfigSyncer) ProjectSync(key string, alert *v3.ProjectAlertRule) (runtime.Object, error) {
+func (d *ConfigSyncer) ProjectGroupSync(key string, alert *v3.ProjectAlertGroup) (runtime.Object, error) {
 	return nil, d.sync()
 }
 
-func (d *ConfigSyncer) ClusterSync(key string, alert *v3.ClusterAlertRule) (runtime.Object, error) {
+func (d *ConfigSyncer) ClusterGroupSync(key string, alert *v3.ClusterAlertGroup) (runtime.Object, error) {
+	err := d.sync()
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+func (d *ConfigSyncer) ProjectRuleSync(key string, alert *v3.ProjectAlertRule) (runtime.Object, error) {
+	return nil, d.sync()
+}
+
+func (d *ConfigSyncer) ClusterRuleSync(key string, alert *v3.ClusterAlertRule) (runtime.Object, error) {
 	return nil, d.sync()
 }
 
@@ -82,11 +94,11 @@ func (d *ConfigSyncer) sync() error {
 	if d.alertManager.IsDeploy == false {
 		return nil
 	}
+	appName, _ := monitorutil.ClusterAlertManagerInfo()
 
 	if _, err := d.alertManager.GetAlertManagerEndpoint(); err != nil {
 		return err
 	}
-
 	notifiers, err := d.notifierLister.List("", labels.NewSelector())
 	if err != nil {
 		return errors.Wrapf(err, "List notifiers")
@@ -94,12 +106,12 @@ func (d *ConfigSyncer) sync() error {
 
 	clusterAlertRules, err := d.clusterAlertRuleLister.List("", labels.NewSelector())
 	if err != nil {
-		return errors.Wrapf(err, "List cluster alerts")
+		return errors.Wrapf(err, "List cluster alert rules")
 	}
 
 	projectAlertPolicies, err := d.projectAlertRuleLister.List("", labels.NewSelector())
 	if err != nil {
-		return errors.Wrapf(err, "List project alerts")
+		return errors.Wrapf(err, "List project alert rules")
 	}
 
 	cAlertsMap := map[string][]*v3.ClusterAlertRule{}
@@ -109,11 +121,14 @@ func (d *ConfigSyncer) sync() error {
 		}
 	}
 
-	pAlertsMap := map[string]map[string][]*v3.ProjectAlertRule{}
+	pAlertsMap := make(map[string]map[string][]*v3.ProjectAlertRule)
 	pAlerts := []*v3.ProjectAlertRule{}
 	for _, alert := range projectAlertPolicies {
 		if controller.ObjectInCluster(d.clusterName, alert) {
 			_, projectName := ref.Parse(alert.Spec.ProjectName)
+			if _, ok := pAlertsMap[projectName]; !ok {
+				pAlertsMap[projectName] = make(map[string][]*v3.ProjectAlertRule)
+			}
 			pAlertsMap[projectName][alert.Spec.GroupName] = append(pAlertsMap[projectName][alert.Spec.GroupName], alert)
 			pAlerts = append(pAlerts, alert)
 		}
@@ -121,8 +136,8 @@ func (d *ConfigSyncer) sync() error {
 
 	if includeClusterMetrics(clusterAlertRules) {
 		promRule := manager.GetDefaultPrometheusRule(monitorutil.CattleNamespaceName, d.clusterName)
-		d.addClusterAlert2Operator(promRule, cAlertsMap)
 
+		d.addClusterAlert2Operator(promRule, cAlertsMap)
 		old, err := d.operatorCRDManager.PrometheusRules.GetNamespaced(monitorutil.CattleNamespaceName, d.clusterName, metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
@@ -187,7 +202,7 @@ func (d *ConfigSyncer) sync() error {
 		return errors.Wrapf(err, "Marshal secrets")
 	}
 
-	configSecret, err := d.secrets.Get("alertmanager", metav1.GetOptions{}) //todo: teamwork
+	configSecret, err := d.secrets.Get(appName, metav1.GetOptions{}) //todo: teamwork
 	if err != nil {
 		return errors.Wrapf(err, "Get secrets")
 	}
@@ -239,64 +254,30 @@ func (d *ConfigSyncer) addClusterAlert2Operator(promRule *monitoringv1.Prometheu
 	}
 }
 
-// func (d *ConfigSyncer) addProjectAlert2Config(config *alertconfig.Config, alerts []*v3.ProjectAlertRule, notifiers []*v3.Notifier) {
-// 	for _, alert := range alerts {
-// 		if alert.Status.State == "inactive" {
-// 			continue
-// 		}
+func (d *ConfigSyncer) addProjectAlert2Config(config *alertconfig.Config, projectGroups map[string]map[string][]*v3.ProjectAlertRule, notifiers []*v3.Notifier) error {
+	for projectName, groupedRules := range projectGroups {
 
-// 		groupID := alert.Namespace + "-" + alert.Name
-// 		receiver := &alertconfig.Receiver{Name: groupID}
-// 		exist := d.addRecipients(notifiers, receiver, alert.Spec.Recipients)
-// 		if exist {
-// 			config.Receivers = append(config.Receivers, receiver)
-// 			r1 := d.newRoute(map[string]string{"group_id": groupID}, defaultGroupWait, defaultRepeatInterval, defaultGroupInterval)
-
-// 			if alert.Spec.PodRules != nil {
-// 				for _, v := range alert.Spec.PodRules {
-// 					d.addRule(groupID, r1, v.CommonRuleField)
-// 				}
-// 			}
-
-// 			if alert.Spec.WorkloadRules != nil {
-// 				for _, v := range alert.Spec.WorkloadRules {
-// 					d.addRule(groupID, r1, v.CommonRuleField)
-// 				}
-// 			}
-
-// 			if alert.Spec.MetricRule != nil {
-// 				for _, v := range alert.Spec.MetricRule {
-// 					d.addRule(groupID, r1, v.CommonRuleField)
-// 				}
-// 			}
-
-// 			d.appendRoute(config.Route, r1)
-// 		}
-// 	}
-// }
-
-func (d *ConfigSyncer) addProjectAlert2Config(config *alertconfig.Config, alerts map[string]map[string][]*v3.ProjectAlertRule, notifiers []*v3.Notifier) error {
-	for projectName, projectAlerts := range alerts {
-		for groupName, groupRules := range projectAlerts {
+		for groupID, rules := range groupedRules {
+			group, err := d.projectAlertGroupLister.Get(projectName, groupID)
+			if err != nil {
+				return fmt.Errorf("get project alert group %s:%s failed, %v", projectName, groupID, err)
+			}
+			_, groupName := ref.Parse(groupID)
 			receiver := &alertconfig.Receiver{Name: groupName}
 
-			group, err := d.projectAlertGroupLister.Get(projectName, groupName) //todo namespace
-			if err != nil {
-				return fmt.Errorf("get cluster alert group %s failed, %v", groupName, err)
-			}
-
 			exist := d.addRecipients(notifiers, receiver, group.Spec.Recipients)
+
 			if exist {
 				config.Receivers = append(config.Receivers, receiver)
-				r1 := d.newRoute(map[string]string{"group_id": groupName}, defaultGroupWait, defaultRepeatInterval, defaultGroupInterval)
+				r1 := d.newRoute(map[string]string{"group_id": groupID}, defaultGroupWait, defaultRepeatInterval, defaultGroupInterval)
 
-				for _, alert := range groupRules {
+				for _, alert := range rules {
 					if alert.Status.State == "inactive" {
 						continue
 					}
 
 					if alert.Spec.PodRule != nil || alert.Spec.WorkloadRule != nil || alert.Spec.MetricRule != nil {
-						d.addRule(groupName, r1, alert.Spec.CommonRuleField)
+						d.addRule(groupID, r1, alert.Spec.CommonRuleField)
 					}
 
 				}
@@ -309,20 +290,25 @@ func (d *ConfigSyncer) addProjectAlert2Config(config *alertconfig.Config, alerts
 }
 
 func (d *ConfigSyncer) addClusterAlert2Config(config *alertconfig.Config, alerts map[string][]*v3.ClusterAlertRule, notifiers []*v3.Notifier) error {
-	for groupName, groupRules := range alerts {
+
+	for groupID, groupRules := range alerts {
+
+		_, groupName := ref.Parse(groupID)
+
 		receiver := &alertconfig.Receiver{Name: groupName}
 
-		group, err := d.clusterAlertGroupLister.Get(d.clusterName, groupName) //todo namespace
+		group, err := d.clusterAlertGroupLister.Get(d.clusterName, groupName)
 		if err != nil {
-			return fmt.Errorf("get cluster alert group %s failed, %v", groupName, err)
+			return fmt.Errorf("get cluster alert group %s:%s failed, %v", d.clusterName, groupName, err)
 		}
 
 		exist := d.addRecipients(notifiers, receiver, group.Spec.Recipients)
 		if exist {
 			config.Receivers = append(config.Receivers, receiver)
-			r1 := d.newRoute(map[string]string{"group_id": groupName}, defaultGroupWait, defaultRepeatInterval, defaultGroupInterval)
+			r1 := d.newRoute(map[string]string{"group_id": groupID}, defaultGroupWait, defaultRepeatInterval, defaultGroupInterval)
 
 			for _, alert := range groupRules {
+				fmt.Println("---groupRules")
 				if alert.Status.State == "inactive" {
 					continue
 				}
@@ -333,7 +319,7 @@ func (d *ConfigSyncer) addClusterAlert2Config(config *alertconfig.Config, alerts
 				}
 
 				if alert.Spec.MetricRule != nil || alert.Spec.SystemServiceRule != nil || alert.Spec.NodeRule != nil {
-					d.addRule(groupName, r1, alert.Spec.CommonRuleField)
+					d.addRule(groupID, r1, alert.Spec.CommonRuleField)
 				}
 
 			}
@@ -344,6 +330,8 @@ func (d *ConfigSyncer) addClusterAlert2Config(config *alertconfig.Config, alerts
 }
 
 func (d *ConfigSyncer) addRule(groupID string, route *alertconfig.Route, comm v3.CommonRuleField) {
+	fmt.Println("---addRule")
+
 	r2 := d.newRoute(map[string]string{"rule_id": GetRuleID(groupID)}, comm.GroupWaitSeconds, comm.GroupIntervalSeconds, comm.RepeatIntervalSeconds)
 	d.appendRoute(route, r2)
 }

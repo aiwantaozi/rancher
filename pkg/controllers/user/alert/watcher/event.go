@@ -51,9 +51,10 @@ func (l *EventWatcher) Sync(key string, obj *corev1.Event) (runtime.Object, erro
 	}
 
 	for _, alert := range clusterAlerts {
-		if alert.Status.State == "inactive" || alert.Status.State == "muted" {
+		if alert.Status.State == "inactive" || alert.Status.State == "muted" || alert.Spec.EventRule == nil {
 			continue
 		}
+
 		if alert.Spec.EventRule.EventType == obj.Type && alert.Spec.EventRule.ResourceKind == obj.InvolvedObject.Kind {
 
 			clusterDisplayName := l.clusterName

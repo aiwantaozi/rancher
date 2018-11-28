@@ -2,7 +2,11 @@
 package monitoring
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"os/exec"
+	"strings"
 
 	"github.com/pkg/errors"
 	appsv1beta2 "github.com/rancher/types/apis/apps/v1beta2"
@@ -17,6 +21,7 @@ var (
 	ConditionNodeExporterDeployed      = condition(mgmtv3.MonitoringConditionNodeExporterDeployed)
 	ConditionKubeStateExporterDeployed = condition(mgmtv3.MonitoringConditionKubeStateExporterDeployed)
 	ConditionPrometheusDeployed        = condition(mgmtv3.MonitoringConditionPrometheusDeployed)
+	ConditionMetricExpressionDeployed  = condition(mgmtv3.MonitoringConditionMetricExpressionDeployed)
 )
 
 func isGrafanaDeployed(workloadsClient appsv1beta2.Interface, appNamespace, appNameSuffix string, monitoringStatus *mgmtv3.MonitoringStatus, clusterName string) error {
@@ -174,4 +179,81 @@ func isPrometheusWithdrew(workloadsClient appsv1beta2.Interface, appNamespace, a
 	})
 
 	return err
+}
+
+func isMetricExpressionDeployed(clusterName string, monitoringStatus *mgmtv3.MonitoringStatus) error {
+	_, err := ConditionMetricExpressionDeployed.DoUntilTrue(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
+		return monitoringStatus, deployAddonWithKubectl(clusterName, ClusterMetricExpression)
+	})
+
+	if err != nil {
+		return errors.Wrapf(err, "failed to deploy metric expression into Cluster %s", clusterName)
+	}
+	return nil
+}
+
+func isMetricExpressionWithdrew(clusterName string, monitoringStatus *mgmtv3.MonitoringStatus) error {
+	_, err := ConditionMetricExpressionDeployed.DoUntilFalse(monitoringStatus, func() (*mgmtv3.MonitoringStatus, error) {
+		return monitoringStatus, removeAddonWithKubectl(clusterName, ClusterMetricExpression)
+	})
+
+	if err != nil {
+		return errors.Wrapf(err, "failed to deploy metric expression into Cluster %s", clusterName)
+	}
+	return nil
+}
+
+func deployAddonWithKubectl(namespace, addonYaml string) error {
+	buf := bytes.NewBufferString(addonYaml)
+	cmd := exec.Command("kubectl", "apply", "-n", namespace, "-f", "-")
+
+	errBuf := &bytes.Buffer{}
+	cmd.Stdin = buf
+	cmd.Stderr = errBuf
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("exec cmd kubectl apply to install yaml failed, %v, stderr: %s", err, errBuf.String())
+	}
+	return nil
+}
+
+func removeAddonWithKubectl(namespace, addonYaml string) error {
+	buf := bytes.NewBufferString(addonYaml)
+	cmd := exec.Command("kubectl", "delete", "-n", namespace, "-f", "-")
+	cmd.Stdin = buf
+
+	errBuf := &bytes.Buffer{}
+	cmd.Stdin = buf
+	if err := cmd.Run(); err != nil {
+		if errMsg := filterError("not found", errBuf); errMsg != "" {
+			return fmt.Errorf("exec cmd kubectl apply to uninstall yaml failed, %s", errMsg)
+		}
+	}
+
+	return nil
+}
+
+func filterError(except string, buf *bytes.Buffer) string {
+	var line string
+	var err error
+	newBuf := &bytes.Buffer{}
+	for {
+		line, err = buf.ReadString('\n')
+		if err != nil {
+			break
+		}
+
+		if !strings.Contains(line, except) {
+			newBuf.WriteString(line)
+			newBuf.WriteString("\n")
+		}
+	}
+
+	if err != io.EOF {
+		newBuf.WriteString(err.Error())
+		newBuf.WriteString("\n")
+		return newBuf.String()
+	}
+
+	return newBuf.String()
 }

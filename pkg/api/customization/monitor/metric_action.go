@@ -32,18 +32,17 @@ type metricHandler struct {
 func (h *metricHandler) Action(actionName string, action *types.Action, apiContext *types.APIContext) error {
 	switch actionName {
 	case querycluster, queryproject:
-
-		var clusterName, appName string
+		var clusterName, projectName, appName, saNamespace string
 		var comm v3.CommonQueryMetricInput
 		var err error
 
 		if actionName == querycluster {
-			appName = monitorutil.ClusterAppName
 			var queryMetricInput v3.QueryClusterMetricInput
 			actionInput, err := parse.ReadBody(apiContext.Request)
 			if err != nil {
 				return err
 			}
+
 			if err = convert.ToObj(actionInput, &queryMetricInput); err != nil {
 				return err
 			}
@@ -54,9 +53,9 @@ func (h *metricHandler) Action(actionName string, action *types.Action, apiConte
 			}
 
 			comm = queryMetricInput.CommonQueryMetricInput
-
+			appName = monitorutil.ClusterAppName
+			saNamespace = monitorutil.CattleNamespaceName
 		} else {
-			appName = monitorutil.ProjectAppName
 			var queryMetricInput v3.QueryProjectMetricInput
 			actionInput, err := parse.ReadBody(apiContext.Request)
 			if err != nil {
@@ -67,13 +66,15 @@ func (h *metricHandler) Action(actionName string, action *types.Action, apiConte
 			}
 
 			projectID := queryMetricInput.ProjectName
-			clusterName, _ = ref.Parse(projectID)
+			clusterName, projectName = ref.Parse(projectID)
 
 			if clusterName == "" {
 				return fmt.Errorf("clusterName is empty")
 			}
 
 			comm = queryMetricInput.CommonQueryMetricInput
+			appName = monitorutil.ProjectAppName
+			saNamespace = monitorutil.ProjectMonitoringNamespace(projectName)
 		}
 
 		start, end, step, err := parseTimeParams(comm.From, comm.To, comm.Interval)
@@ -86,7 +87,7 @@ func (h *metricHandler) Action(actionName string, action *types.Action, apiConte
 			return fmt.Errorf("get usercontext failed, %v", err)
 		}
 
-		token, err := getAuthToken(userContext, appName, monitorutil.CattleNamespaceName)
+		token, err := getAuthToken(userContext, appName, saNamespace)
 		if err != nil {
 			return err
 		}
@@ -123,11 +124,10 @@ func (h *metricHandler) Action(actionName string, action *types.Action, apiConte
 
 	case listclustermetricname, listprojectmetricname:
 
-		var clusterName, appName string
+		var clusterName, projectName, appName, saNamespace string
 		var err error
 
 		if actionName == listclustermetricname {
-			appName = monitorutil.ClusterAppName
 			var input v3.ClusterMetricNamesInput
 			actionInput, err := parse.ReadBody(apiContext.Request)
 			if err != nil {
@@ -142,8 +142,11 @@ func (h *metricHandler) Action(actionName string, action *types.Action, apiConte
 				return fmt.Errorf("clusterName is empty")
 			}
 
+			appName = monitorutil.ClusterAppName
+			saNamespace = monitorutil.CattleNamespaceName
+
 		} else {
-			appName = monitorutil.ProjectAppName
+
 			var input v3.ProjectMetricNamesInput
 			actionInput, err := parse.ReadBody(apiContext.Request)
 			if err != nil {
@@ -154,11 +157,14 @@ func (h *metricHandler) Action(actionName string, action *types.Action, apiConte
 			}
 
 			projectID := input.ProjectName
-			clusterName, _ = ref.Parse(projectID)
+			clusterName, projectName = ref.Parse(projectID)
 
 			if clusterName == "" {
 				return fmt.Errorf("clusterName is empty")
 			}
+
+			appName = monitorutil.ProjectAppName
+			saNamespace = monitorutil.ProjectMonitoringNamespace(projectName)
 		}
 
 		userContext, err := h.clustermanager.UserContext(clusterName)
@@ -166,7 +172,7 @@ func (h *metricHandler) Action(actionName string, action *types.Action, apiConte
 			return fmt.Errorf("get usercontext failed, %v", err)
 		}
 
-		token, err := getAuthToken(userContext, appName, monitorutil.CattleNamespaceName)
+		token, err := getAuthToken(userContext, appName, saNamespace)
 		if err != nil {
 			return err
 		}

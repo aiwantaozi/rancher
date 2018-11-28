@@ -67,11 +67,7 @@ func (w *NodeWatcher) watchRule() error {
 	}
 
 	for _, alert := range clusterAlerts {
-		if alert.Status.State == "inactive" {
-			continue
-		}
-
-		if alert.Spec.NodeRule == nil {
+		if alert.Status.State == "inactive" || alert.Spec.NodeRule == nil {
 			continue
 		}
 

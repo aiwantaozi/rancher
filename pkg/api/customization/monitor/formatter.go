@@ -20,7 +20,6 @@ const (
 
 const (
 	queryAction           = "query"
-	listMetricNameAction  = "listmetricname"
 	querycluster          = "querycluster"
 	queryproject          = "queryproject"
 	listclustermetricname = "listclustermetricname"
@@ -36,11 +35,15 @@ func QueryGraphCollectionFormatter(apiContext *types.APIContext, collection *typ
 }
 
 func MetricFormatter(apiContext *types.APIContext, resource *types.RawResource) {
-	resource.AddAction(apiContext, queryAction)
-	resource.AddAction(apiContext, listMetricNameAction)
+	resource.AddAction(apiContext, querycluster)
+	resource.AddAction(apiContext, queryproject)
+	resource.AddAction(apiContext, listclustermetricname)
+	resource.AddAction(apiContext, listprojectmetricname)
 }
 
 func MetricCollectionFormatter(apiContext *types.APIContext, collection *types.GenericCollection) {
-	collection.AddAction(apiContext, queryAction)
-	collection.AddAction(apiContext, listMetricNameAction)
+	collection.AddAction(apiContext, querycluster)
+	collection.AddAction(apiContext, queryproject)
+	collection.AddAction(apiContext, listclustermetricname)
+	collection.AddAction(apiContext, listprojectmetricname)
 }

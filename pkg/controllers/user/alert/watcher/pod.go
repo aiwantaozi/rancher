@@ -103,11 +103,19 @@ func (w *PodWatcher) watchRule() error {
 	}
 
 	for _, alert := range pAlerts {
-		if alert.Status.State == "inactive" {
+		if alert.Status.State == "inactive" || alert.Spec.PodRule == nil {
 			continue
 		}
 
 		parts := strings.Split(alert.Spec.PodRule.PodName, ":")
+		if len(parts) < 2 {
+			//TODO: for invalid format pod
+			if err = w.projectAlertPolicies.DeleteNamespaced(alert.Namespace, alert.Name, &metav1.DeleteOptions{}); err != nil {
+				return err
+			}
+			continue
+		}
+
 		ns := parts[0]
 		podID := parts[1]
 		newPod, err := w.podLister.Get(ns, podID)

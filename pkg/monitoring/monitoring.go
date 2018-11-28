@@ -40,6 +40,7 @@ const (
 	// The names of App
 	systemAppName           = "system-monitoring"
 	metricExpressionAppName = "metric-expression"
+	alertManagerAppName     = "alertmanager-operated"
 
 	// The headless service name of Prometheus
 	prometheusHeadlessServiceName = "prometheus-operated"
@@ -89,8 +90,16 @@ func ClusterMonitoringMetricsInfo() (appName, appTargetNamespace string) {
 	return metricExpressionAppName, cattleNamespaceName
 }
 
+func ClusterAlertManagerInfo() (appName, appTargetNamespace string) {
+	return alertManagerAppName, cattleNamespaceName
+}
+
 func ProjectMonitoringInfo(project *mgmtv3.Project) (appName, appTargetNamespace string) {
 	return ProjectAppName, fmt.Sprintf("%s-%s", cattleNamespaceName, project.Name)
+}
+
+func ClusterAlertManagerEndpoint() (headlessServiceName, namespace, port string) {
+	return alertManagerAppName, cattleNamespaceName, "9093"
 }
 
 func ClusterPrometheusEndpoint() (headlessServiceName, namespace, port string) {
@@ -99,4 +108,9 @@ func ClusterPrometheusEndpoint() (headlessServiceName, namespace, port string) {
 
 func ProjectPrometheusEndpoint(project *mgmtv3.Project) (headlessServiceName, namespace string, port string) {
 	return prometheusHeadlessServiceName, fmt.Sprintf("%s-%s", cattleNamespaceName, project.Name), "9090"
+}
+
+func ProjectMonitoringNamespace(projectName string) string {
+	//projectName sample: p-xxx
+	return fmt.Sprintf("cattle-prometheus-%s", projectName)
 }

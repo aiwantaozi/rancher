@@ -90,7 +90,6 @@ type AlertManager struct {
 }
 
 func NewAlertManager(cluster *config.UserContext) *AlertManager {
-
 	dial, err := cluster.Management.Dialer.ClusterDialer(cluster.ClusterName)
 	if err != nil {
 		logrus.Warnf("Failed to get cluster dialer: %v", err)
@@ -110,15 +109,15 @@ func NewAlertManager(cluster *config.UserContext) *AlertManager {
 }
 
 func (m *AlertManager) GetAlertManagerEndpoint() (string, error) {
-	svc, err := m.svcLister.Get(monitorutil.CattleNamespaceName, "alertmanager-svc")
+	appName, namespace := monitorutil.ClusterAlertManagerInfo()
+
+	svc, err := m.svcLister.Get(namespace, appName)
 	if err != nil {
-		return "", fmt.Errorf("Failed to get service for alertmanager")
+		return "", fmt.Errorf("Failed to get service for alertmanager, %v", err)
 	}
 
-	ip := svc.Spec.ClusterIP
 	port := svc.Spec.Ports[0].Port
-	url := "http://" + ip + ":" + strconv.Itoa(int(port))
-
+	url := "http://" + svc.Name + "." + svc.Namespace + ".svc.cluster.local:" + strconv.Itoa(int(port))
 	return url, nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/rancher/rancher/pkg/controllers/user/alert/configsyncer"
+	"github.com/rancher/rancher/pkg/controllers/user/alert/deployer"
 	"github.com/rancher/rancher/pkg/controllers/user/alert/manager"
 	"github.com/rancher/rancher/pkg/controllers/user/alert/watcher"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
@@ -37,24 +38,25 @@ var (
 
 func Register(ctx context.Context, cluster *config.UserContext) {
 	alertmanager := manager.NewAlertManager(cluster)
+
 	prometheusCRDManager := manager.NewPrometheusCRDManager(ctx, cluster)
+
 	clusterAlertRules := cluster.Management.Management.ClusterAlertRules(cluster.ClusterName)
 	projectAlertRules := cluster.Management.Management.ProjectAlertRules("")
 
 	clusterAlertGroups := cluster.Management.Management.ClusterAlertGroups(cluster.ClusterName)
 	projectAlertGroups := cluster.Management.Management.ProjectAlertGroups("")
-	// deployer := deployer.NewDeployer(cluster, alertmanager)
-	// cluste·manager, prometheusCRDManager)
+
+	deploy := deployer.NewDeployer(cluster, alertmanager)
+	clusterAlertGroups.AddClusterScopedHandler(ctx, "cluster-alert-deployer", cluster.ClusterName, deploy.ClusterSync)
+	projectAlertGroups.AddClusterScopedHandler(ctx, "project-alert-deployer", cluster.ClusterName, deploy.ProjectSync)
 
 	configSyncer := configsyncer.NewConfigSyncer(ctx, cluster, alertmanager, prometheusCRDManager)
-	clusterAlertRules.AddClusterScopedHandler(ctx, "cluster-alert-group-controller", cluster.ClusterName, configSyncer.ClusterSync)
-	projectAlertRules.AddClusterScopedHandler(ctx, "project-alert-group-controller", cluster.ClusterName, configSyncer.ProjectSync)
+	clusterAlertGroups.AddClusterScopedHandler(ctx, "cluster-alert-group-controller", cluster.ClusterName, configSyncer.ClusterGroupSync)
+	projectAlertGroups.AddClusterScopedHandler(ctx, "project-alert-group-controller", cluster.ClusterName, configSyncer.ProjectGroupSync)
 
-	// clusterAlertRules := cluster.Management.Management.ClusterAlertRules(cluster.ClusterName)
-	// projectAlertRules := cluster.Management.Management.ProjectAlertRules("")
-
-	// clusterAlertRules.AddClusterScopedHandler("cluster-alert-rule-controller", cluster.ClusterName, configSyncer.ClusterSync)
-	// projectAlertRulesclusterAlertRules.AddClusterScopedHandler("project-alert-rule-controller", cluster.ClusterName, configSyncer.ProjectSync)
+	clusterAlertRules.AddClusterScopedHandler(ctx, "cluster-alert-rule-controller", cluster.ClusterName, configSyncer.ClusterRuleSync)
+	projectAlertRules.AddClusterScopedHandler(ctx, "project-alert-rule-controller", cluster.ClusterName, configSyncer.ProjectRuleSync)
 
 	projects := cluster.Management.Management.Projects("")
 	projectLifecycle := &ProjectLifecycle{

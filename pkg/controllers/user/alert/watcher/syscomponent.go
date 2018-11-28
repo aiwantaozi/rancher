@@ -61,7 +61,7 @@ func (w *SysComponentWatcher) watchRule() error {
 		return err
 	}
 	for _, rule := range clusterAlerts {
-		if rule.Status.State == "inactive" {
+		if rule.Status.State == "inactive" || rule.Spec.SystemServiceRule == nil {
 			continue
 		}
 		if rule.Spec.SystemServiceRule != nil {

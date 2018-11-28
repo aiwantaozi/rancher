@@ -1,12 +1,9 @@
 package monitoring
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
 	"reflect"
 	"strings"
 	"time"
@@ -125,12 +122,6 @@ func (ch *clusterHandler) doSync(clusterTag string, cluster *mgmtv3.Cluster) err
 				return errors.Wrapf(err, "failed to grant prometheus RBAC into Cluster %s", clusterTag)
 			}
 
-			if err := deployAddonWithKubectl(ch.clusterName, ClusterMetricExpression); err != nil {
-				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
-				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
-				return errors.Wrapf(err, "failed to deploy metric expression into Cluster %s", clusterTag)
-			}
-
 			if err := ch.app.deployClusterMonitoring(appName, appTargetNamespace, appServiceAccountName, appProjectName, cluster, etcdTLSConfigs, systemComponentMap); err != nil {
 				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
 				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
@@ -173,12 +164,6 @@ func (ch *clusterHandler) doSync(clusterTag string, cluster *mgmtv3.Cluster) err
 				return errors.Wrapf(err, "failed to revoke prometheus RBAC from Cluster %s", clusterTag)
 			}
 
-			if err := removeAddonWithKubectl(ch.clusterName, ClusterMetricExpression); err != nil {
-				mgmtv3.ClusterConditionMonitoringEnabled.Unknown(cluster)
-				mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, err.Error())
-				return errors.Wrapf(err, "failed to remove metric expression from Cluster %s", clusterTag)
-			}
-
 			mgmtv3.ClusterConditionMonitoringEnabled.False(cluster)
 			mgmtv3.ClusterConditionMonitoringEnabled.Message(cluster, "")
 		}
@@ -198,6 +183,7 @@ func (ch *clusterHandler) detectMonitoringComponentsWhileInstall(appName, appTar
 				{Type: mgmtv3.ClusterConditionType(ConditionNodeExporterDeployed), Status: k8scorev1.ConditionFalse},
 				{Type: mgmtv3.ClusterConditionType(ConditionKubeStateExporterDeployed), Status: k8scorev1.ConditionFalse},
 				{Type: mgmtv3.ClusterConditionType(ConditionPrometheusDeployed), Status: k8scorev1.ConditionFalse},
+				{Type: mgmtv3.ClusterConditionType(ConditionMetricExpressionDeployed), Status: k8scorev1.ConditionFalse},
 			},
 		}
 	}
@@ -217,6 +203,12 @@ func (ch *clusterHandler) detectMonitoringComponentsWhileInstall(appName, appTar
 		func() error {
 			return isPrometheusDeployed(ch.agentWorkloadsClient, appTargetNamespace, appName, monitoringStatus)
 		},
+		func() error {
+			return isPrometheusDeployed(ch.agentWorkloadsClient, appTargetNamespace, appName, monitoringStatus)
+		},
+		func() error {
+			return isMetricExpressionDeployed(cluster.Name, monitoringStatus)
+		},
 	)
 }
 
@@ -230,6 +222,9 @@ func (ch *clusterHandler) detectMonitoringComponentsWhileUninstall(appName, appT
 	monitoringStatus := cluster.Status.MonitoringStatus
 
 	return stream(
+		func() error {
+			return isMetricExpressionWithdrew(cluster.Name, monitoringStatus)
+		},
 		func() error {
 			return isPrometheusWithdrew(ch.agentWorkloadsClient, appTargetNamespace, appName, monitoringStatus)
 		},
@@ -581,6 +576,7 @@ func (ah *appHandler) deployClusterMonitoring(appName, appTargetNamespace string
 	}
 
 	_, _, port := monitoring.ClusterPrometheusEndpoint()
+	alertSvcName, _, alertPort := monitoring.ClusterPrometheusEndpoint()
 
 	appAnswers := map[string]string{
 		"exporter-coredns.enabled":  "true",
@@ -653,9 +649,9 @@ func (ah *appHandler) deployClusterMonitoring(appName, appTargetNamespace string
 		"prometheus.sidecarsSpec[0].readinessProbe.httpGet.path":                  "/-/ready",
 		"prometheus.sidecarsSpec[0].readinessProbe.httpGet.port":                  "web",
 		"prometheus.sidecarsSpec[0].readinessProbe.httpGet.scheme":                "HTTP",
-		"prometheus.alertingEndpoints[0].name":                                    "alertmanager",
+		"prometheus.alertingEndpoints[0].name":                                    alertSvcName,
 		"prometheus.alertingEndpoints[0].namespace":                               appTargetNamespace,
-		"prometheus.alertingEndpoints[0].port":                                    "alertmanager",
+		"prometheus.alertingEndpoints[0].port":                                    alertPort,
 		"prometheus.serviceMonitorNamespaceSelector.matchExpressions[0].key":      monitoring.CattleMonitoringLabelKey,
 		"prometheus.serviceMonitorNamespaceSelector.matchExpressions[0].operator": "Exists",
 		"prometheus.serviceMonitorSelector.matchExpressions[0].key":               monitoring.CattlePrometheusRuleLabelKey,
@@ -763,28 +759,6 @@ func (ah *appHandler) withdrawMonitoring(appName, appTargetNamespace string) err
 	}
 
 	return nil
-}
-
-func deployAddonWithKubectl(namespace, addonYaml string) error {
-	buf := bytes.NewBufferString(addonYaml)
-	cmd := exec.Command("kubectl", "apply", "-n", namespace, "-f", "-")
-	cmd.Stdin = buf
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-func removeAddonWithKubectl(namespace, addonYaml string) error {
-	buf := bytes.NewBufferString(addonYaml)
-	cmd := exec.Command("kubectl", "delete", "-n", namespace, "-f", "-")
-	cmd.Stdin = buf
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if strings.Contains(err.Error(), "not found") {
-		return nil
-	}
-	return fmt.Errorf("remove addon failed, %v", err)
 }
 
 func getClusterTag(cluster *mgmtv3.Cluster) string {

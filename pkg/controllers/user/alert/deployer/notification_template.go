@@ -22,7 +22,7 @@ pod {{ (index .Alerts 0).Labels.pod_name }} is {{ (index .Alerts 0).Labels.condi
 {{ end}}
 
 
-is {{ (index .Alerts 0).Labels.conditionThreshold_comparison }} the threshold of 0.05{{ (index .Alerts 0).Labels.conditionThreshold_thresholdValue }}.
+is {{ (index .Alerts 0).Labels.conditionThreshold_comparison }} the threshold of {{ (index .Alerts 0).Labels.conditionThreshold_thresholdValue }}.
 {{ end}}
 {{ end}}
 
@@ -117,7 +117,7 @@ node {{ (index .Alerts 0).Labels.instance }}
 {{ else if eq (index .Alerts 0).Labels.resource_type "workload" }}
 workload {{ (index .Alerts 0).Labels.pod_name }}
 {{ else if eq (index .Alerts 0).Labels.resource_type "pod" }}
-pod {{ (index .Alerts 0).Labels.pod_name }}{{ end}}is {{ (index .Alerts 0).Labels.conditionThreshold_comparison }} the threshold of 0.05{{ (index .Alerts 0).Labels.conditionThreshold_thresholdValue }}.
+pod {{ (index .Alerts 0).Labels.pod_name }}{{ end}}is {{ (index .Alerts 0).Labels.conditionThreshold_comparison }} the threshold of {{ (index .Alerts 0).Labels.conditionThreshold_thresholdValue }}.
 {{ end}}`
 
 	Slack = `{{ if eq (index .Alerts 0).Labels.alert_type "event"}}
