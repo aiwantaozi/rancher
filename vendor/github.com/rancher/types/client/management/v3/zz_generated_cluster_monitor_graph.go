@@ -13,6 +13,7 @@ const (
 	ClusterMonitorGraphFieldDescription            = "description"
 	ClusterMonitorGraphFieldDetailsMetricsSelector = "detailsMetricsSelector"
 	ClusterMonitorGraphFieldDisplayResourceType    = "displayResourceType"
+	ClusterMonitorGraphFieldGraphType              = "graphType"
 	ClusterMonitorGraphFieldLabels                 = "labels"
 	ClusterMonitorGraphFieldMetricsSelector        = "metricsSelector"
 	ClusterMonitorGraphFieldName                   = "name"
@@ -21,7 +22,6 @@ const (
 	ClusterMonitorGraphFieldPriority               = "priority"
 	ClusterMonitorGraphFieldRemoved                = "removed"
 	ClusterMonitorGraphFieldResourceType           = "resourceType"
-	ClusterMonitorGraphFieldType                   = "type"
 	ClusterMonitorGraphFieldUUID                   = "uuid"
 	ClusterMonitorGraphFieldYAxis                  = "yAxis"
 )
@@ -35,6 +35,7 @@ type ClusterMonitorGraph struct {
 	Description            string            `json:"description,omitempty" yaml:"description,omitempty"`
 	DetailsMetricsSelector map[string]string `json:"detailsMetricsSelector,omitempty" yaml:"detailsMetricsSelector,omitempty"`
 	DisplayResourceType    string            `json:"displayResourceType,omitempty" yaml:"displayResourceType,omitempty"`
+	GraphType              string            `json:"graphType,omitempty" yaml:"graphType,omitempty"`
 	Labels                 map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	MetricsSelector        map[string]string `json:"metricsSelector,omitempty" yaml:"metricsSelector,omitempty"`
 	Name                   string            `json:"name,omitempty" yaml:"name,omitempty"`
@@ -43,7 +44,6 @@ type ClusterMonitorGraph struct {
 	Priority               int64             `json:"priority,omitempty" yaml:"priority,omitempty"`
 	Removed                string            `json:"removed,omitempty" yaml:"removed,omitempty"`
 	ResourceType           string            `json:"resourceType,omitempty" yaml:"resourceType,omitempty"`
-	Type                   string            `json:"type,omitempty" yaml:"type,omitempty"`
 	UUID                   string            `json:"uuid,omitempty" yaml:"uuid,omitempty"`
 	YAxis                  *YAxis            `json:"yAxis,omitempty" yaml:"yAxis,omitempty"`
 }

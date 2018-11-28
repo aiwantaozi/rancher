@@ -248,14 +248,13 @@ func parseMetricParams(userContext *config.UserContext, resourceType, clusterNam
 			}
 
 			if rcType == workload.DeploymentType {
-				rcType = workload.ReplicaSetType
 				rcs, err := userContext.Apps.ReplicaSets(ns).List(metav1.ListOptions{})
 				if err != nil {
 					return newMetricParams, fmt.Errorf("list replicasets failed, %v", err)
 				}
 
 				for _, rc := range rcs.Items {
-					if rc.OwnerReferences != nil && strings.ToLower(rc.OwnerReferences[0].Kind) == strings.ToLower(rcType) && rc.OwnerReferences[0].Name == name {
+					if rc.OwnerReferences != nil && strings.ToLower(rc.OwnerReferences[0].Kind) == workload.DeploymentType && rc.OwnerReferences[0].Name == name {
 						podOwners = append(podOwners, rc.Name)
 					}
 				}
@@ -269,7 +268,7 @@ func parseMetricParams(userContext *config.UserContext, resourceType, clusterNam
 			for _, pod := range pods.Items {
 				podRefName := pod.OwnerReferences[0].Name
 				podRefKind := pod.OwnerReferences[0].Kind
-				if pod.OwnerReferences != nil && contains(podRefName, podOwners...) && strings.ToLower(podRefKind) == strings.ToLower(rcType) {
+				if pod.OwnerReferences != nil && contains(podRefName, podOwners...) && strings.ToLower(podRefKind) == workload.ReplicaSetType {
 					podNames = append(podNames, pod.Name)
 				}
 			}

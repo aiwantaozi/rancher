@@ -94,7 +94,7 @@ func (h *clusterGraphHandler) QuerySeriesAction(actionName string, action *types
 			return err
 		}
 
-		queries = append(queries, metrics2PrometheusQuery(monitorMetrics, inputParser.Start, inputParser.End, inputParser.Step, isInstanceGraph(g.Type))...)
+		queries = append(queries, metrics2PrometheusQuery(monitorMetrics, inputParser.Start, inputParser.End, inputParser.Step, isInstanceGraph(g.GraphType))...)
 	}
 
 	seriesSlice, err := prometheusQuery.Do(queries)

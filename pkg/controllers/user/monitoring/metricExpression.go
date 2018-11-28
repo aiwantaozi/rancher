@@ -934,6 +934,7 @@ metadata:
 spec:
   enable: true
   resourceType: scheduler
+  displayResourceType: kube-component
   priority: 320
   title: scheduler-e-2-e-scheduling-latency-seconds-quantile
   thresholds: 10
@@ -961,6 +962,7 @@ metadata:
 spec:
   enable: true
   resourceType: scheduler
+  displayResourceType: kube-component
   priority: 321
   title: scheduler-total-preemption-attempts
   thresholds: 10
@@ -988,6 +990,7 @@ metadata:
 spec:
   enable: true
   resourceType: scheduler
+  displayResourceType: kube-component
   priority: 322
   title: scheduler-pod-unscheduler
   thresholds: 10

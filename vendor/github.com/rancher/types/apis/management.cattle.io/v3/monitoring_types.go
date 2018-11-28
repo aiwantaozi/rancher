@@ -78,7 +78,7 @@ type CommonMonitorGraphSpec struct {
 	DetailsMetricsSelector map[string]string `json:"detailsMetricsSelector,omitempty"`
 	YAxis                  YAxis             `json:"yAxis,omitempty"`
 	Priority               int               `json:"priority,omitempty"`
-	Type                   string            `json:"type,omitempty" norman:"type=enum,options=graph|singlestat"`
+	GraphType              string            `json:"graphType,omitempty" norman:"type=enum,options=graph|singlestat"`
 }
 
 type YAxis struct {
