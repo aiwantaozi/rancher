@@ -27,34 +27,6 @@ func filterRancherLabels(l map[string]string) labels.Set {
 	return labels.Set(rtn)
 }
 
-// getServiceFromWorkloadMetrics return nil as service means no metric annotation found
-func getServiceFromWorkloadMetrics(w *util.Workload) (*util.Service, error) {
-	metrics, err := getMetricsFromWorkload(w)
-	if err != nil {
-		return nil, err
-	}
-
-	rtn := &util.Service{
-		Type:         corev1.ServiceTypeClusterIP,
-		ClusterIP:    "None",
-		Name:         w.Name + metricsServiceSuffix,
-		ServicePorts: []corev1.ServicePort{},
-	}
-	PortMap := map[int32]bool{}
-	for _, metricPort := range metrics {
-		if _, ok := PortMap[metricPort.Port]; ok {
-			continue
-		}
-		rtn.ServicePorts = append(rtn.ServicePorts, corev1.ServicePort{
-			Name:       fmt.Sprintf("%s%d", "metrics", metricPort.Port),
-			Port:       metricPort.Port,
-			TargetPort: intstr.FromInt(int(metricPort.Port)),
-		})
-		PortMap[metricPort.Port] = true
-	}
-	return rtn, nil
-}
-
 func getWorkloadOwnerReference(w *util.Workload) metav1.OwnerReference {
 	controller := true
 	return metav1.OwnerReference{
@@ -106,9 +78,11 @@ func getServiceMonitorFromWorkload(w *util.Workload) (*monitoringv1.ServiceMonit
 	}
 
 	for _, metric := range metrics {
-		targetPort := intstr.FromInt(int(metric.Port))
+		portName := fmt.Sprintf("%s%d", "metrics", metric.Port)
+		intstrPort := intstr.FromInt(int(metric.Port))
 		endpoint := monitoringv1.Endpoint{
-			TargetPort: &targetPort,
+			Port:       portName,
+			TargetPort: &intstrPort,
 			Path:       metric.Path,
 			Scheme:     metric.Schema,
 			TLSConfig: &monitoringv1.TLSConfig{
@@ -206,16 +180,15 @@ func GetServicePortsFromEndpoint(endpoints []monitoringv1.Endpoint) []corev1.Ser
 	PortMap := map[string]bool{}
 	var rtn []corev1.ServicePort
 	for _, endpoint := range endpoints {
-		if _, ok := PortMap[endpoint.TargetPort.String()]; ok {
+		if _, ok := PortMap[endpoint.Port]; ok {
 			continue
 		}
-
 		rtn = append(rtn, corev1.ServicePort{
-			Name:       fmt.Sprintf("%s%s", "metrics", endpoint.TargetPort),
-			Port:       int32(endpoint.TargetPort.IntValue()),
+			Name:       endpoint.Port,
+			Port:       endpoint.TargetPort.IntVal,
 			TargetPort: *endpoint.TargetPort,
 		})
-		PortMap[endpoint.TargetPort.String()] = true
+		PortMap[endpoint.Port] = true
 	}
 	return rtn
 }

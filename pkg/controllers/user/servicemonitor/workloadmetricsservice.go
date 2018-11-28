@@ -82,7 +82,7 @@ func (c *MetricsServiceController) syncServiceMonitor(key string, svm *monitorin
 
 	data := md5.Sum([]byte(key))
 	base64Key := hex.EncodeToString(data[:])
-	servicePorts := GetServicePortsFromEndpoint(svm.Spec.Endpoints)
+	var servicePorts []corev1.ServicePort
 	serviceAnnotations := map[string]string{}
 	serviceLabels := map[string]string{
 		metricsServiceLabel: base64Key,
@@ -107,6 +107,9 @@ func (c *MetricsServiceController) syncServiceMonitor(key string, svm *monitorin
 	toUpdate := map[string]*corev1.Service{}
 
 	workloadIDs := getStringSliceFromAnnotation(svm.ObjectMeta, util.WorkloadAnnotation)
+	if len(workloadIDs) != 0 {
+		servicePorts = GetServicePortsFromEndpoint(svm.Spec.Endpoints)
+	}
 	for _, workloadID := range workloadIDs {
 		w, err := c.workloadLister.GetByWorkloadID(workloadID)
 		if err != nil {
