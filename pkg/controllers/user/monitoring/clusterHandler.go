@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	kcluster "github.com/rancher/kontainer-engine/cluster"
 	"github.com/rancher/rancher/pkg/controllers/user/helm/common"
+	"github.com/rancher/rancher/pkg/controllers/user/nslabels"
 	"github.com/rancher/rancher/pkg/monitoring"
 	nodeutil "github.com/rancher/rancher/pkg/node"
 	"github.com/rancher/rancher/pkg/ref"
@@ -652,7 +653,7 @@ func (ah *appHandler) deployClusterMonitoring(appName, appTargetNamespace string
 		"prometheus.alertingEndpoints[0].name":                                    alertSvcName,
 		"prometheus.alertingEndpoints[0].namespace":                               appTargetNamespace,
 		"prometheus.alertingEndpoints[0].port":                                    alertPort,
-		"prometheus.serviceMonitorNamespaceSelector.matchExpressions[0].key":      monitoring.CattleMonitoringLabelKey,
+		"prometheus.serviceMonitorNamespaceSelector.matchExpressions[0].key":      nslabels.ProjectIDFieldLabel,
 		"prometheus.serviceMonitorNamespaceSelector.matchExpressions[0].operator": "Exists",
 		"prometheus.serviceMonitorSelector.matchExpressions[0].key":               monitoring.CattlePrometheusRuleLabelKey,
 		"prometheus.serviceMonitorSelector.matchExpressions[0].operator":          "In",
