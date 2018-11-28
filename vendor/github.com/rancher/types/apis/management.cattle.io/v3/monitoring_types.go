@@ -132,12 +132,12 @@ type QueryProjectGraph struct {
 }
 
 type QueryClusterMetricInput struct {
-	ClusterName string `json:"clusterName" norman:"type=reference[cluster]"`
+	ClusterName string `json:"clusterId" norman:"type=reference[cluster]"`
 	CommonQueryMetricInput
 }
 
 type QueryProjectMetricInput struct {
-	ProjectName string `json:"projectName" norman:"type=reference[project]"`
+	ProjectName string `json:"projectId" norman:"type=reference[project]"`
 	CommonQueryMetricInput
 }
 
@@ -164,9 +164,9 @@ type MetricNamesOutput struct {
 }
 
 type ClusterMetricNamesInput struct {
-	ClusterName string `json:"clusterName" norman:"type=reference[cluster]"`
+	ClusterName string `json:"clusterId" norman:"type=reference[cluster]"`
 }
 
 type ProjectMetricNamesInput struct {
-	ProjectName string `json:"projectName" norman:"type=reference[project]"`
+	ProjectName string `json:"projectId" norman:"type=reference[project]"`
 }

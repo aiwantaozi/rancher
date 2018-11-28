@@ -502,7 +502,6 @@ func alertTypes(schema *types.Schemas) *types.Schemas {
 		MustImport(&Version, v3.Notification{}).
 		AddMapperForType(&Version, v3.Notifier{},
 			m.DisplayName{}).
-		MustImport(&Version, v3.Notification{}).
 		MustImportAndCustomize(&Version, v3.Notifier{}, func(schema *types.Schema) {
 			schema.CollectionActions = map[string]types.Action{
 				"send": {
@@ -553,7 +552,9 @@ func alertTypes(schema *types.Schemas) *types.Schemas {
 				"mute":       {},
 				"unmute":     {},
 			}
-		})
+		}). // for old version alert
+		MustImport(&Version, v3.ClusterAlert{}).
+		MustImport(&Version, v3.ProjectAlert{})
 }
 
 func composeType(schemas *types.Schemas) *types.Schemas {
