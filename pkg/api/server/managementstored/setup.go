@@ -133,7 +133,7 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 	Preference(schemas, apiContext)
 	ClusterRegistrationTokens(schemas)
 	NodeTemplates(schemas, apiContext)
-	LoggingTypes(schemas)
+	LoggingTypes(schemas, apiContext)
 	Alert(schemas, apiContext)
 	Pipeline(schemas, apiContext, clusterManager)
 	Project(schemas, apiContext)
@@ -373,12 +373,19 @@ func Setting(schemas *types.Schemas) {
 	schema.Formatter = setting.Formatter
 }
 
-func LoggingTypes(schemas *types.Schemas) {
+func LoggingTypes(schemas *types.Schemas, management *config.ScaledContext) {
+	handler := logging.Handler{
+		DialerFactory: management.Dialer,
+	}
 	schema := schemas.Schema(&managementschema.Version, client.ClusterLoggingType)
-	schema.Validator = logging.ClusterLoggingValidator
+	// schema.Validator = logging.ClusterLoggingValidator
+	schema.Formatter = logging.Formatter
+	schema.ActionHandler = handler.ActionHandler
 
 	schema = schemas.Schema(&managementschema.Version, client.ProjectLoggingType)
-	schema.Validator = logging.ProjectLoggingValidator
+	// schema.Validator = logging.ProjectLoggingValidator
+	schema.Formatter = logging.Formatter
+	schema.ActionHandler = handler.ActionHandler
 }
 
 func Alert(schemas *types.Schemas, management *config.ScaledContext) {

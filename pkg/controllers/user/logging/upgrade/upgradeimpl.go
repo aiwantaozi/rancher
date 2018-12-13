@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	loggingconfig "github.com/rancher/rancher/pkg/controllers/user/logging/config"
-	"github.com/rancher/rancher/pkg/controllers/user/logging/utils"
+	"github.com/rancher/rancher/pkg/controllers/user/logging/deployer"
 	"github.com/rancher/rancher/pkg/controllers/user/systemimage"
 	rv1beta2 "github.com/rancher/types/apis/apps/v1beta2"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
@@ -96,8 +96,8 @@ func (l *loggingService) upgradeDaemonset(daemonset *v1beta2.DaemonSet) error {
 }
 
 func getDaemonset(dockerRootDir, driver string) (fluentd, logAggregator *v1beta2.DaemonSet, newFluentdVersion, newLogAggregatorVersion string, err error) {
-	fluentd = utils.NewFluentdDaemonset(loggingconfig.FluentdName, loggingconfig.LoggingNamespace, dockerRootDir)
-	logAggregator = utils.NewLogAggregatorDaemonset(loggingconfig.LogAggregatorName, loggingconfig.LoggingNamespace, driver)
+	fluentd = deployer.NewFluentdDaemonset(dockerRootDir)
+	logAggregator = deployer.NewLogAggregatorDaemonset(driver)
 
 	newFluentdVersion, err = systemimage.DefaultGetVersion(fluentd)
 	if err != nil {

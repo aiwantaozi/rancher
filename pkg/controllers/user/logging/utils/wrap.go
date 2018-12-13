@@ -1,63 +1,116 @@
 package utils
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
-
 	"github.com/rancher/types/apis/management.cattle.io/v3"
+	"github.com/rancher/types/config/dialer"
 
 	loggingconfig "github.com/rancher/rancher/pkg/controllers/user/logging/config"
 )
 
+const (
+	sslv23  = "SSLv23"
+	tlsv1   = "TLSv1"
+	tlsv1_1 = "TLSv1_1"
+	tlsv1_2 = "TLSv1_2"
+)
+
 type WrapLogging struct {
 	CurrentTarget string
-	WrapSyslog
-	WrapSplunk
-	WrapElasticsearch
-	WrapKafka
-	WrapFluentForwarder
+	*WrapSyslog
+	*WrapSplunk
+	*WrapElasticsearch
+	*WrapKafka
+	*WrapFluentForwarder
 }
 
 type WrapClusterLogging struct {
-	v3.ClusterLoggingSpec
-	WrapLogging
+	v3.LoggingCommonField
+	*WrapLogging
+	ExcludeNamespace       string
+	ExcludeSystemComponent bool
 }
 
 type WrapProjectLogging struct {
-	v3.ProjectLoggingSpec
-	GrepNamespace string
-	WrapLogging
+	v3.LoggingCommonField
+	*WrapLogging
+	GrepNamespace   string
+	IsSystemProject bool
 	WrapProjectName string
 }
 
+func NewWrapClusterLogging(logging v3.ClusterLoggingSpec, excludeNamespace string) (*WrapClusterLogging, error) {
+	wrapLogging := NewWrapLogging(logging.ElasticsearchConfig, logging.SplunkConfig, logging.SyslogConfig, logging.KafkaConfig, logging.FluentForwarderConfig)
+
+	if err := wrapLogging.Wrapper(); err != nil {
+		return nil, errors.Wrapf(err, "wrapper logging target failed")
+	}
+
+	return &WrapClusterLogging{
+		LoggingCommonField:     logging.LoggingCommonField,
+		WrapLogging:            wrapLogging,
+		ExcludeNamespace:       excludeNamespace,
+		ExcludeSystemComponent: logging.ExcludeSystemComponent,
+	}, nil
+}
+
+func NewWrapProjectLogging(logging v3.ProjectLoggingSpec, grepNamespace string, isSystemProject bool) (*WrapProjectLogging, error) {
+	wrapLogging := NewWrapLogging(logging.ElasticsearchConfig, logging.SplunkConfig, logging.SyslogConfig, logging.KafkaConfig, logging.FluentForwarderConfig)
+	if err := wrapLogging.Wrapper(); err != nil {
+		return nil, err
+	}
+
+	wrapProjectName := strings.Replace(logging.ProjectName, ":", "_", -1)
+	return &WrapProjectLogging{
+		LoggingCommonField: logging.LoggingCommonField,
+		WrapLogging:        wrapLogging,
+		GrepNamespace:      grepNamespace,
+		IsSystemProject:    isSystemProject,
+		WrapProjectName:    wrapProjectName,
+	}, nil
+}
+
+type LoggingTarget interface {
+	TestReachable(dial dialer.Dialer) error
+}
+
 type WrapElasticsearch struct {
+	*v3.ElasticsearchConfig
 	DateFormat string
 	Host       string
 	Scheme     string
 }
 
 type WrapSplunk struct {
+	*v3.SplunkConfig
 	Host   string
 	Port   string
 	Scheme string
 }
 
 type WrapKafka struct {
+	*v3.KafkaConfig
 	Brokers   string
 	Zookeeper string
 }
 
 type WrapSyslog struct {
+	*v3.SyslogConfig
 	Host string
 	Port string
 }
 
 type WrapFluentForwarder struct {
+	*v3.FluentForwarderConfig
 	EnableShareKey bool
 	FluentServers  []FluentServer
 }
@@ -68,154 +121,121 @@ type FluentServer struct {
 	v3.FluentServer
 }
 
-func (w *WrapClusterLogging) Validate() error {
-	_, err := GetWrapConfig(w.ElasticsearchConfig, w.SplunkConfig, w.SyslogConfig, w.KafkaConfig, w.FluentForwarderConfig)
-	return err
+func (w *WrapElasticsearch) TestReachable(dial dialer.Dialer) error {
+	testReachable2(dial, "test")
+	return nil
 }
 
-func (w *WrapProjectLogging) Validate() error {
-	_, err := GetWrapConfig(w.ElasticsearchConfig, w.SplunkConfig, w.SyslogConfig, w.KafkaConfig, w.FluentForwarderConfig)
-	return err
+func (w *WrapSplunk) TestReachable(dial dialer.Dialer) error {
+	fmt.Println("---here")
+	fmt.Printf("%+v", w)
+	return testReachable2(dial, w.Endpoint)
 }
 
-func ToWrapClusterLogging(clusterLogging v3.ClusterLoggingSpec) (*WrapClusterLogging, error) {
-	wp := WrapClusterLogging{
-		ClusterLoggingSpec: clusterLogging,
-	}
-
-	wrapLogging, err := GetWrapConfig(clusterLogging.ElasticsearchConfig, clusterLogging.SplunkConfig, clusterLogging.SyslogConfig, clusterLogging.KafkaConfig, clusterLogging.FluentForwarderConfig)
-	if err != nil {
-		return nil, err
-	}
-	wp.WrapLogging = wrapLogging
-
-	return &wp, nil
+func (w *WrapKafka) TestReachable(dial dialer.Dialer) error {
+	testReachable2(dial, "test")
+	return nil
 }
 
-func ToWrapProjectLogging(grepNamespace string, projectLogging v3.ProjectLoggingSpec) (*WrapProjectLogging, error) {
-	wp := WrapProjectLogging{
-		ProjectLoggingSpec: projectLogging,
-		GrepNamespace:      grepNamespace,
-		WrapProjectName:    strings.Replace(projectLogging.ProjectName, ":", "_", -1),
-	}
-
-	wrapLogging, err := GetWrapConfig(projectLogging.ElasticsearchConfig, projectLogging.SplunkConfig, projectLogging.SyslogConfig, projectLogging.KafkaConfig, projectLogging.FluentForwarderConfig)
-
-	if err != nil {
-		return nil, err
-	}
-	wp.WrapLogging = wrapLogging
-	return &wp, nil
+func (w *WrapSyslog) TestReachable(dial dialer.Dialer) error {
+	testReachable2(dial, "test")
+	return nil
 }
 
-func GetWrapConfig(es *v3.ElasticsearchConfig, sp *v3.SplunkConfig, sl *v3.SyslogConfig, kf *v3.KafkaConfig, ff *v3.FluentForwarderConfig) (wrapLogging WrapLogging, err error) {
-	if es != nil {
-		var h, s string
-		h, s, err = parseEndpoint(es.Endpoint)
+func (w *WrapFluentForwarder) TestReachable(dial dialer.Dialer) error {
+	testReachable2(dial, "test")
+	return nil
+}
+
+func (w *WrapLogging) GetLoggingTarget() LoggingTarget {
+	if w.WrapElasticsearch != nil {
+		return w.WrapElasticsearch
+	} else if w.WrapSplunk != nil {
+		return w.WrapSplunk
+	} else if w.WrapSyslog != nil {
+		return w.WrapSyslog
+	} else if w.WrapKafka != nil {
+		return w.WrapKafka
+	} else if w.WrapFluentForwarder != nil {
+		return w.WrapFluentForwarder
+	}
+	return nil
+}
+
+func (w *WrapLogging) Wrapper() error {
+	if w.WrapElasticsearch != nil {
+		h, s, err := parseEndpoint(w.ElasticsearchConfig.Endpoint)
 		if err != nil {
-			return
+			return err
 		}
-		err = testReachable("tcp", h)
-		if err != nil {
-			return
-		}
-		wrapLogging.WrapElasticsearch = WrapElasticsearch{
-			Host:       h,
-			Scheme:     s,
-			DateFormat: getDateFormat(es.DateFormat),
-		}
-		wrapLogging.CurrentTarget = loggingconfig.Elasticsearch
+		w.WrapElasticsearch.Host = h
+		w.WrapElasticsearch.Scheme = s
+		w.WrapElasticsearch.DateFormat = getDateFormat(w.ElasticsearchConfig.DateFormat)
+		w.CurrentTarget = loggingconfig.Elasticsearch
 	}
 
-	if sp != nil {
-		var h, s, host, port string
-		h, s, err = parseEndpoint(sp.Endpoint)
+	if w.WrapSplunk != nil {
+		h, s, err := parseEndpoint(w.SplunkConfig.Endpoint)
 		if err != nil {
-			return
-		}
-		err = testReachable("tcp", h)
-		if err != nil {
-			return
+			return err
 		}
 
-		host, port, err = net.SplitHostPort(h)
+		host, port, err := net.SplitHostPort(h)
 		if err != nil {
-			return
-		}
-		wrapLogging.WrapSplunk = WrapSplunk{
-			Host:   host,
-			Port:   port,
-			Scheme: s,
+			return err
 		}
 
-		wrapLogging.CurrentTarget = loggingconfig.Splunk
+		w.WrapSplunk.Host = host
+		w.WrapSplunk.Scheme = s
+		w.WrapSplunk.Port = port
+		w.CurrentTarget = loggingconfig.Splunk
 	}
 
-	if sl != nil {
-		err = testReachable(sl.Protocol, sl.Endpoint)
+	if w.WrapSyslog != nil {
+		host, port, err := net.SplitHostPort(w.SyslogConfig.Endpoint)
 		if err != nil {
-			return
+			return err
 		}
-		var host, port string
-		host, port, err = net.SplitHostPort(sl.Endpoint)
-		if err != nil {
-			return
-		}
-		wrapLogging.WrapSyslog = WrapSyslog{
-			Host: host,
-			Port: port,
-		}
-		wrapLogging.CurrentTarget = loggingconfig.Syslog
+
+		w.WrapSyslog.Host = host
+		w.WrapSyslog.Port = port
+		w.CurrentTarget = loggingconfig.Syslog
 	}
 
-	if kf != nil {
-		if len(kf.BrokerEndpoints) == 0 && kf.ZookeeperEndpoint == "" {
-			err = errors.New("one of the kafka endpoint must be set")
-			return
+	if w.WrapKafka != nil {
+		if len(w.KafkaConfig.BrokerEndpoints) == 0 && w.KafkaConfig.ZookeeperEndpoint == "" {
+			err := errors.New("one of the kafka endpoint must be set")
+			return err
 		}
-		if len(kf.BrokerEndpoints) != 0 {
+		if len(w.KafkaConfig.BrokerEndpoints) != 0 {
 			var bs []string
-			var h string
-			for _, v := range kf.BrokerEndpoints {
-				h, _, err = parseEndpoint(v)
+			for _, v := range w.KafkaConfig.BrokerEndpoints {
+				h, _, err := parseEndpoint(v)
 				if err != nil {
-					return
-				}
-				err = testReachable("tcp", h)
-				if err != nil {
-					return
+					return err
 				}
 				bs = append(bs, h)
 			}
-			wrapLogging.WrapKafka = WrapKafka{
-				Brokers: strings.Join(bs, ","),
-			}
+			w.WrapKafka.Brokers = strings.Join(bs, ",")
 		} else {
-			if kf.ZookeeperEndpoint != "" {
-				var h string
-				if h, _, err = parseEndpoint(kf.ZookeeperEndpoint); err != nil {
-					return
-				}
-				err = testReachable("tcp", h)
+			if w.KafkaConfig.ZookeeperEndpoint != "" {
+				h, _, err := parseEndpoint(w.KafkaConfig.ZookeeperEndpoint)
 				if err != nil {
-					return
+					return err
 				}
-				wrapLogging.WrapKafka = WrapKafka{
-					Zookeeper: h,
-				}
+				w.WrapKafka.Zookeeper = h
 			}
 		}
-		wrapLogging.CurrentTarget = loggingconfig.Kafka
+		w.CurrentTarget = loggingconfig.Kafka
 	}
 
-	if ff != nil {
+	if w.WrapFluentForwarder != nil {
 		var enableShareKey bool
 		var fss []FluentServer
-		for _, v := range ff.FluentServers {
-			var host, port string
-			host, port, err = net.SplitHostPort(v.Endpoint)
+		for _, v := range w.FluentForwarderConfig.FluentServers {
+			host, port, err := net.SplitHostPort(v.Endpoint)
 			if err != nil {
-				return
+				return err
 			}
 			if v.SharedKey != "" {
 				enableShareKey = true
@@ -227,13 +247,34 @@ func GetWrapConfig(es *v3.ElasticsearchConfig, sp *v3.SplunkConfig, sl *v3.Syslo
 			}
 			fss = append(fss, fs)
 		}
-		wrapLogging.WrapFluentForwarder = WrapFluentForwarder{
+		w.WrapFluentForwarder = &WrapFluentForwarder{
 			EnableShareKey: enableShareKey,
 			FluentServers:  fss,
 		}
-		wrapLogging.CurrentTarget = loggingconfig.FluentForwarder
+		w.CurrentTarget = loggingconfig.FluentForwarder
 	}
-	return
+
+	return nil
+}
+
+func NewWrapLogging(es *v3.ElasticsearchConfig, sp *v3.SplunkConfig, sl *v3.SyslogConfig, kf *v3.KafkaConfig, ff *v3.FluentForwarderConfig) (wrapLogging *WrapLogging) {
+	wp := &WrapLogging{}
+	if es != nil {
+		wp.WrapElasticsearch = &WrapElasticsearch{ElasticsearchConfig: es}
+	} else if sp != nil {
+
+		wp.WrapSplunk = &WrapSplunk{SplunkConfig: sp}
+	} else if sp != nil {
+
+		wp.WrapSyslog = &WrapSyslog{SyslogConfig: sl}
+	} else if kf != nil {
+
+		wp.WrapKafka = &WrapKafka{KafkaConfig: kf}
+	} else if ff != nil {
+
+		wp.WrapFluentForwarder = &WrapFluentForwarder{FluentForwarderConfig: ff}
+	}
+	return wp
 }
 
 func parseEndpoint(endpoint string) (host string, scheme string, err error) {
@@ -271,32 +312,64 @@ func testReachable(network string, url string) error {
 	return nil
 }
 
-func GetClusterTarget(spec v3.ClusterLoggingSpec) string {
-	if spec.ElasticsearchConfig != nil {
-		return loggingconfig.Elasticsearch
-	} else if spec.SplunkConfig != nil {
-		return loggingconfig.Splunk
-	} else if spec.KafkaConfig != nil {
-		return loggingconfig.Kafka
-	} else if spec.SyslogConfig != nil {
-		return loggingconfig.Syslog
-	} else if spec.FluentForwarderConfig != nil {
-		return loggingconfig.FluentForwarder
+func testReachable2(dial dialer.Dialer, url, rootCA, clientCert, clientKey, clientKeyPass, sslVersion string, sslVerify bool) error {
+	tlsConfig, err := buildTLSConfig(rootCA, clientCert, clientKey, clientKeyPass, sslVersion, sslVerify)
+	if err != nil {
+		return errors.Wrap(err, "build tls config failed")
 	}
-	return "none"
+
+	transport := &http.Transport{
+		Dial:            dial,
+		TLSClientConfig: tlsConfig,
+	}
+
+	client := http.Client{
+		Transport: transport,
+		Timeout:   5 * time.Second,
+	}
+
+	if _, err = client.Head(url); err != nil {
+		return fmt.Errorf("url %s unreachable, error: %v", url, err)
+	}
+	return nil
 }
 
-func GetProjectTarget(spec v3.ProjectLoggingSpec) string {
-	if spec.ElasticsearchConfig != nil {
-		return loggingconfig.Elasticsearch
-	} else if spec.SplunkConfig != nil {
-		return loggingconfig.Splunk
-	} else if spec.KafkaConfig != nil {
-		return loggingconfig.Kafka
-	} else if spec.SyslogConfig != nil {
-		return loggingconfig.Syslog
-	} else if spec.FluentForwarderConfig != nil {
-		return loggingconfig.FluentForwarder
+func buildTLSConfig(rootCA, clientCert, clientKey, clientKeyPass, sslVersion string, sslVerify bool) (*tls.Config, error) {
+	config := &tls.Config{
+		InsecureSkipVerify: !sslVerify,
 	}
-	return "none"
+
+	if clientCert != "" {
+		cert, err := tls.LoadX509KeyPair(clientCert, clientKey)
+		if err != nil {
+			return nil, errors.Wrap(err, "load client cert and key failed")
+		}
+
+		config.Certificates = []tls.Certificate{cert}
+	}
+
+	if rootCA != "" {
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM([]byte(rootCA))
+
+		config.RootCAs = caCertPool
+	}
+
+	if sslVersion != "" {
+		switch sslVersion {
+		case sslv23:
+			config.MaxVersion = tls.VersionSSL30
+		case tlsv1:
+			config.MaxVersion = tls.VersionTLS10
+			config.MinVersion = tls.VersionTLS10
+		case tlsv1_1:
+			config.MaxVersion = tls.VersionTLS11
+			config.MinVersion = tls.VersionTLS11
+		case tlsv1_2:
+			config.MaxVersion = tls.VersionTLS12
+			config.MinVersion = tls.VersionTLS12
+		}
+	}
+
+	return config, nil
 }

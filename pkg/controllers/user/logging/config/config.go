@@ -1,5 +1,9 @@
 package constant
 
+import (
+	"fmt"
+)
+
 const (
 	LoggingNamespace   = "cattle-logging"
 	ClusterLoggingName = "cluster-logging"
@@ -46,3 +50,15 @@ const (
 	ClientCertName = "client-cert.pem"
 	ClientKeyName  = "client-key.pem"
 )
+
+func SecretDataKeyCa(level, name string) string {
+	return fmt.Sprintf("%s_%s_%s", level, name, CaFileName)
+}
+
+func SecretDataKeyCert(level, name string) string {
+	return fmt.Sprintf("%s_%s_%s", level, name, ClientCertName)
+}
+
+func SecretDataKeyCertKey(level, name string) string {
+	return fmt.Sprintf("%s_%s_%s", level, name, ClientKeyName)
+}

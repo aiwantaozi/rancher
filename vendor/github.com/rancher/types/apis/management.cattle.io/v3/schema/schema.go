@@ -499,8 +499,21 @@ func logTypes(schema *types.Schemas) *types.Schemas {
 			m.DisplayName{}).
 		AddMapperForType(&Version, v3.ProjectLogging{},
 			m.DisplayName{}).
-		MustImport(&Version, v3.ClusterLogging{}).
-		MustImport(&Version, v3.ProjectLogging{})
+		MustImport(&Version, v3.TestInput{}).
+		MustImportAndCustomize(&Version, v3.ClusterLogging{}, func(schema *types.Schema) {
+			schema.ResourceActions = map[string]types.Action{
+				"test": {
+					Input: "testInput",
+				},
+			}
+		}).
+		MustImportAndCustomize(&Version, v3.ProjectLogging{}, func(schema *types.Schema) {
+			schema.ResourceActions = map[string]types.Action{
+				"test": {
+					Input: "testInput",
+				},
+			}
+		})
 }
 
 func globalTypes(schema *types.Schemas) *types.Schemas {

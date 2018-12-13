@@ -37,11 +37,13 @@ type ProjectLogging struct {
 	Status ProjectLoggingStatus `json:"status"`
 }
 
-type LoggingCommonSpec struct {
-	DisplayName string `json:"displayName,omitempty"`
+type LoggingCommonField struct {
+	DisplayName         string            `json:"displayName,omitempty"`
+	OutputFlushInterval int               `json:"outputFlushInterval,omitempty" norman:"default=3"`
+	OutputTags          map[string]string `json:"outputTags,omitempty"`
+}
 
-	OutputFlushInterval   int                    `json:"outputFlushInterval,omitempty" norman:"default=3"`
-	OutputTags            map[string]string      `json:"outputTags,omitempty"`
+type LoggingTargets struct {
 	ElasticsearchConfig   *ElasticsearchConfig   `json:"elasticsearchConfig,omitempty"`
 	SplunkConfig          *SplunkConfig          `json:"splunkConfig,omitempty"`
 	KafkaConfig           *KafkaConfig           `json:"kafkaConfig,omitempty"`
@@ -50,12 +52,15 @@ type LoggingCommonSpec struct {
 }
 
 type ClusterLoggingSpec struct {
-	LoggingCommonSpec
-	ClusterName string `json:"clusterName" norman:"type=reference[cluster]"`
+	LoggingTargets
+	LoggingCommonField
+	ClusterName            string `json:"clusterName" norman:"type=reference[cluster]"`
+	ExcludeSystemComponent bool   `json:"excludeSystemComponent,omitempty"`
 }
 
 type ProjectLoggingSpec struct {
-	LoggingCommonSpec
+	LoggingTargets
+	LoggingCommonField
 	ProjectName string `json:"projectName" norman:"type=reference[project]"`
 }
 
@@ -161,4 +166,9 @@ type LoggingSystemImages struct {
 	Kibana                        string `json:"kibana,omitempty"`
 	Busybox                       string `json:"busybox,omitempty"`
 	LogAggregatorFlexVolumeDriver string `json:"logAggregatorFlexVolumeDriver,omitempty"`
+}
+
+type TestInput struct {
+	ClusterName string `json:"clusterId" norman:"type=reference[cluster]"`
+	LoggingTargets
 }

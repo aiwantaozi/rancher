@@ -2,6 +2,31 @@ package generator
 
 var ProjectTemplate = `{{range $i, $store := .projectTargets -}}
 {{ if $store.CurrentTarget }}
+
+{{ if eq $store.IsSystemProject true }}
+<source>
+  @type  tail
+  path  /var/lib/rancher/rke/log/*.log
+  pos_file  /fluentd/log/fluentd-rke-logging.pos
+  time_format  %Y-%m-%dT%H:%M:%S
+  tag  rke.*
+  format  json
+  read_from_head  true
+</source>
+
+<filter rke.**>
+  @type record_transformer
+  enable_ruby true  
+  <record>
+    tag ${tag}
+    log_type k8s_infrastructure_container 
+    driver rke
+    component ${tag_suffix[6].split("_")[0]}
+    container_id ${tag_suffix[6].split(".")[0]}
+  </record>
+</filter>
+{{end -}}
+
 <source>
    @type  tail
    path  /var/log/containers/*.log
@@ -59,7 +84,7 @@ var ProjectTemplate = `{{range $i, $store := .projectTargets -}}
 
 {{ if eq $store.CurrentTarget "syslog"}}
 {{ if $store.SyslogConfig.Token}}
-<filter {{$store.ProjectName}}.** project-custom.{{$store.ProjectName}}.**>
+<filter {{$store.ProjectName}}.** project-custom.{{$store.ProjectName}}.** {{ if eq $store.IsSystemProject true }}rke.**{{end-}} >
   @type record_transformer
   <record>
     tag ${tag} {{$store.SyslogConfig.Token}}
@@ -68,9 +93,7 @@ var ProjectTemplate = `{{range $i, $store := .projectTargets -}}
 {{end -}}
 {{end -}}
 
-<match  {{$store.ProjectName}}.** project-custom.{{$store.ProjectName}}.**> 
-  @type copy
-  <store>
+<match  {{$store.ProjectName}}.** project-custom.{{$store.ProjectName}}.** {{ if eq $store.IsSystemProject true }}rke.**{{end-}}> 
     {{ if eq $store.CurrentTarget "elasticsearch"}}
     @type elasticsearch
     include_tag_key  true

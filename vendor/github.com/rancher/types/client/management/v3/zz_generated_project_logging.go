@@ -71,6 +71,8 @@ type ProjectLoggingOperations interface {
 	Replace(existing *ProjectLogging) (*ProjectLogging, error)
 	ByID(id string) (*ProjectLogging, error)
 	Delete(container *ProjectLogging) error
+
+	ActionTest(resource *ProjectLogging, input *TestInput) error
 }
 
 func newProjectLoggingClient(apiClient *Client) *ProjectLoggingClient {
@@ -122,4 +124,9 @@ func (c *ProjectLoggingClient) ByID(id string) (*ProjectLogging, error) {
 
 func (c *ProjectLoggingClient) Delete(container *ProjectLogging) error {
 	return c.apiClient.Ops.DoResourceDelete(ProjectLoggingType, &container.Resource)
+}
+
+func (c *ProjectLoggingClient) ActionTest(resource *ProjectLogging, input *TestInput) error {
+	err := c.apiClient.Ops.DoAction(ProjectLoggingType, "test", &resource.Resource, input, nil)
+	return err
 }
