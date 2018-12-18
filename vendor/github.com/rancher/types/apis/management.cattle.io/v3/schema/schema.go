@@ -506,9 +506,19 @@ func logTypes(schema *types.Schemas) *types.Schemas {
 					Input: "testInput",
 				},
 			}
+			schema.CollectionActions = map[string]types.Action{
+				"test": {
+					Input: "testInput",
+				},
+			}
 		}).
 		MustImportAndCustomize(&Version, v3.ProjectLogging{}, func(schema *types.Schema) {
 			schema.ResourceActions = map[string]types.Action{
+				"test": {
+					Input: "testInput",
+				},
+			}
+			schema.CollectionActions = map[string]types.Action{
 				"test": {
 					Input: "testInput",
 				},

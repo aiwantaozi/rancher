@@ -73,6 +73,8 @@ type ProjectLoggingOperations interface {
 	Delete(container *ProjectLogging) error
 
 	ActionTest(resource *ProjectLogging, input *TestInput) error
+
+	CollectionActionTest(resource *ProjectLoggingCollection, input *TestInput) error
 }
 
 func newProjectLoggingClient(apiClient *Client) *ProjectLoggingClient {
@@ -128,5 +130,10 @@ func (c *ProjectLoggingClient) Delete(container *ProjectLogging) error {
 
 func (c *ProjectLoggingClient) ActionTest(resource *ProjectLogging, input *TestInput) error {
 	err := c.apiClient.Ops.DoAction(ProjectLoggingType, "test", &resource.Resource, input, nil)
+	return err
+}
+
+func (c *ProjectLoggingClient) CollectionActionTest(resource *ProjectLoggingCollection, input *TestInput) error {
+	err := c.apiClient.Ops.DoCollectionAction(ProjectLoggingType, "test", &resource.Collection, input, nil)
 	return err
 }

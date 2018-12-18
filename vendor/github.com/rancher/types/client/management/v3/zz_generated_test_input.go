@@ -2,7 +2,7 @@ package client
 
 const (
 	TestInputType                       = "testInput"
-	TestInputFieldClusterID             = "clusterId"
+	TestInputFieldClusterName           = "clusterId"
 	TestInputFieldElasticsearchConfig   = "elasticsearchConfig"
 	TestInputFieldFluentForwarderConfig = "fluentForwarderConfig"
 	TestInputFieldKafkaConfig           = "kafkaConfig"
@@ -11,7 +11,7 @@ const (
 )
 
 type TestInput struct {
-	ClusterID             string                 `json:"clusterId,omitempty" yaml:"clusterId,omitempty"`
+	ClusterName           string                 `json:"clusterId,omitempty" yaml:"clusterId,omitempty"`
 	ElasticsearchConfig   *ElasticsearchConfig   `json:"elasticsearchConfig,omitempty" yaml:"elasticsearchConfig,omitempty"`
 	FluentForwarderConfig *FluentForwarderConfig `json:"fluentForwarderConfig,omitempty" yaml:"fluentForwarderConfig,omitempty"`
 	KafkaConfig           *KafkaConfig           `json:"kafkaConfig,omitempty" yaml:"kafkaConfig,omitempty"`

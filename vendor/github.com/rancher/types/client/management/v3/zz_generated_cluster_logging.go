@@ -79,6 +79,8 @@ type ClusterLoggingOperations interface {
 	Delete(container *ClusterLogging) error
 
 	ActionTest(resource *ClusterLogging, input *TestInput) error
+
+	CollectionActionTest(resource *ClusterLoggingCollection, input *TestInput) error
 }
 
 func newClusterLoggingClient(apiClient *Client) *ClusterLoggingClient {
@@ -134,5 +136,10 @@ func (c *ClusterLoggingClient) Delete(container *ClusterLogging) error {
 
 func (c *ClusterLoggingClient) ActionTest(resource *ClusterLogging, input *TestInput) error {
 	err := c.apiClient.Ops.DoAction(ClusterLoggingType, "test", &resource.Resource, input, nil)
+	return err
+}
+
+func (c *ClusterLoggingClient) CollectionActionTest(resource *ClusterLoggingCollection, input *TestInput) error {
+	err := c.apiClient.Ops.DoCollectionAction(ClusterLoggingType, "test", &resource.Collection, input, nil)
 	return err
 }
