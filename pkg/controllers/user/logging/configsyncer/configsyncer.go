@@ -217,7 +217,7 @@ func (s *ConfigSyncer) syncProjectConfig(projectLoggings []*mgmtv3.ProjectLoggin
 		return errors.Wrap(err, "list namespace failed")
 	}
 
-	var wl []utils.WrapProjectLogging
+	var wl []utils.ProjectLoggingTemplateWrap
 	for _, v := range projectLoggings {
 
 		var grepNamespace []string

@@ -103,30 +103,20 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
 <match  cluster.** cluster-custom.** {{ if eq .clusterTarget.ExcludeSystemComponent false }}rke.**{{end -}} > 
   @type copy
   <store>
-    {{ if eq .clusterTarget.CurrentTarget "embedded"}}
-    @type elasticsearch
-    include_tag_key  true
-    hosts "elasticsearch.cattle-logging:9200"
-    logstash_prefix {{.clusterTarget.EmbeddedConfig.IndexPrefix}}
-    logstash_format true
-    logstash_dateformat  {{.clusterTarget.WrapEmbedded.DateFormat}}
-    type_name  "container_log"
-    {{end -}}
-
     {{ if eq .clusterTarget.CurrentTarget "elasticsearch"}}
     @type elasticsearch
     include_tag_key  true
     {{ if and .clusterTarget.ElasticsearchConfig.AuthUserName .clusterTarget.ElasticsearchConfig.AuthPassword}}
-    hosts {{.clusterTarget.WrapElasticsearch.Scheme}}://{{.clusterTarget.ElasticsearchConfig.AuthUserName}}:{{.clusterTarget.ElasticsearchConfig.AuthPassword}}@{{.clusterTarget.WrapElasticsearch.Host}}
+    hosts {{.clusterTarget.ElasticsearchTemplateWrap.Scheme}}://{{.clusterTarget.ElasticsearchConfig.AuthUserName}}:{{.clusterTarget.ElasticsearchConfig.AuthPassword}}@{{.clusterTarget.ElasticsearchTemplateWrap.Host}}
     {{else -}}
     hosts {{.clusterTarget.ElasticsearchConfig.Endpoint}}    
     {{end -}}
     logstash_format true
     logstash_prefix "{{.clusterTarget.ElasticsearchConfig.IndexPrefix}}"
-    logstash_dateformat  {{.clusterTarget.WrapElasticsearch.DateFormat}}
+    logstash_dateformat  {{.clusterTarget.ElasticsearchTemplateWrap.DateFormat}}
     type_name  "container_log"
 
-    {{ if eq .clusterTarget.WrapElasticsearch.Scheme "https"}}    
+    {{ if eq .clusterTarget.ElasticsearchTemplateWrap.Scheme "https"}}    
     ssl_verify {{ .clusterTarget.ElasticsearchConfig.SSLVerify }}
     ssl_version {{ .clusterTarget.ElasticsearchConfig.SSLVersion }}
     {{ if .clusterTarget.ElasticsearchConfig.Certificate }}
@@ -146,8 +136,8 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
 
     {{ if eq .clusterTarget.CurrentTarget "splunk"}}
     @type splunk_hec
-    host {{.clusterTarget.WrapSplunk.Host}}
-    port {{.clusterTarget.WrapSplunk.Port}}
+    host {{.clusterTarget.SplunkTemplateWrap.Host}}
+    port {{.clusterTarget.SplunkTemplateWrap.Port}}
     token {{.clusterTarget.SplunkConfig.Token}}
 
     {{ if .clusterTarget.SplunkConfig.Source}}
@@ -157,7 +147,7 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
     default_index {{ .clusterTarget.SplunkConfig.Index }}
     {{end -}}
 
-    {{ if eq .clusterTarget.WrapSplunk.Scheme "https"}}
+    {{ if eq .clusterTarget.SplunkTemplateWrap.Scheme "https"}}
     use_ssl true
     ssl_verify {{ .clusterTarget.SplunkConfig.SSLVerify }}
 
@@ -179,9 +169,9 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
     {{ if eq .clusterTarget.CurrentTarget "kafka"}}
     @type kafka_buffered
     {{ if .clusterTarget.KafkaConfig.ZookeeperEndpoint }}
-    zookeeper {{.clusterTarget.WrapKafka.Zookeeper}}
+    zookeeper {{.clusterTarget.KafkaTemplateWrap.Zookeeper}}
     {{else}}
-    brokers {{.clusterTarget.WrapKafka.Brokers}}
+    brokers {{.clusterTarget.KafkaTemplateWrap.Brokers}}
     {{end}}
     default_topic {{.clusterTarget.KafkaConfig.Topic}}
     output_data_type  "json"
@@ -201,8 +191,8 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
 
     {{ if eq .clusterTarget.CurrentTarget "syslog"}}
     @type remote_syslog
-    host {{.clusterTarget.WrapSyslog.Host}}
-    port {{.clusterTarget.WrapSyslog.Port}}
+    host {{.clusterTarget.SyslogTemplateWrap.Host}}
+    port {{.clusterTarget.SyslogTemplateWrap.Port}}
     severity {{.clusterTarget.SyslogConfig.Severity}}
     protocol {{.clusterTarget.SyslogConfig.Protocol}}
     {{ if .clusterTarget.SyslogConfig.Program }}
@@ -242,14 +232,14 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
     compress gzip
     {{end -}}
 
-    {{ if .clusterTarget.WrapFluentForwarder.EnableShareKey }}
+    {{ if .clusterTarget.FluentForwarderTemplateWrap.EnableShareKey }}
     <security>
       self_hostname "#{Socket.gethostname}"
       shared_key true
     </security>
     {{end -}}
 
-    {{range $k, $val := .clusterTarget.WrapFluentForwarder.FluentServers -}}
+    {{range $k, $val := .clusterTarget.FluentForwarderTemplateWrap.FluentServers -}}
     <server>
       {{if $val.Hostname}}
       name {{$val.Hostname}}

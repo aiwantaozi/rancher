@@ -141,15 +141,15 @@ func (d *Deployer) isAllLoggingDisable() (bool, error) {
 	}
 
 	for _, v := range clusterLoggings {
-		wl := utils.NewWrapLogging(v.Spec.ElasticsearchConfig, v.Spec.SplunkConfig, v.Spec.SyslogConfig, v.Spec.KafkaConfig, v.Spec.FluentForwarderConfig)
-		if wl.GetLoggingTarget() != nil {
+		wl := utils.NewLoggingTargetTestWrap(v.Spec.ElasticsearchConfig, v.Spec.SplunkConfig, v.Spec.SyslogConfig, v.Spec.KafkaConfig, v.Spec.FluentForwarderConfig)
+		if wl != nil {
 			return false, nil
 		}
 	}
 
 	for _, v := range projectLoggings {
-		wpl := utils.NewWrapLogging(v.Spec.ElasticsearchConfig, v.Spec.SplunkConfig, v.Spec.SyslogConfig, v.Spec.KafkaConfig, v.Spec.FluentForwarderConfig)
-		if wpl.GetLoggingTarget() != nil {
+		wpl := utils.NewLoggingTargetTestWrap(v.Spec.ElasticsearchConfig, v.Spec.SplunkConfig, v.Spec.SyslogConfig, v.Spec.KafkaConfig, v.Spec.FluentForwarderConfig)
+		if wpl != nil {
 			return false, nil
 		}
 	}

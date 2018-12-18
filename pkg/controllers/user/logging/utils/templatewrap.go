@@ -1,0 +1,280 @@
+package utils
+
+import (
+	"fmt"
+	"net"
+	"net/url"
+	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/rancher/types/apis/management.cattle.io/v3"
+
+	loggingconfig "github.com/rancher/rancher/pkg/controllers/user/logging/config"
+)
+
+type LoggingTargetTemplateWrap struct {
+	CurrentTarget string
+	ElasticsearchTemplateWrap
+	SplunkTemplateWrap
+	SyslogTemplateWrap
+	KafkaTemplateWrap
+	FluentForwarderTemplateWrap
+}
+
+type ClusterLoggingTemplateWrap struct {
+	v3.LoggingCommonField
+	LoggingTargetTemplateWrap
+	ExcludeNamespace       string
+	ExcludeSystemComponent bool
+}
+
+type ProjectLoggingTemplateWrap struct {
+	v3.LoggingCommonField
+	LoggingTargetTemplateWrap
+	GrepNamespace   string
+	IsSystemProject bool
+	WrapProjectName string
+}
+
+func NewWrapClusterLogging(logging v3.ClusterLoggingSpec, excludeNamespace string) (*ClusterLoggingTemplateWrap, error) {
+	wrap, err := NewLoggingTargetTemplateWrap(logging.ElasticsearchConfig, logging.SplunkConfig, logging.SyslogConfig, logging.KafkaConfig, logging.FluentForwarderConfig)
+	if err != nil {
+		return nil, errors.Wrapf(err, "wrapper logging target failed")
+	}
+
+	return &ClusterLoggingTemplateWrap{
+		LoggingCommonField:        logging.LoggingCommonField,
+		LoggingTargetTemplateWrap: *wrap,
+		ExcludeNamespace:          excludeNamespace,
+		ExcludeSystemComponent:    logging.ExcludeSystemComponent,
+	}, nil
+}
+
+func NewWrapProjectLogging(logging v3.ProjectLoggingSpec, grepNamespace string, isSystemProject bool) (*ProjectLoggingTemplateWrap, error) {
+	wrap, err := NewLoggingTargetTemplateWrap(logging.ElasticsearchConfig, logging.SplunkConfig, logging.SyslogConfig, logging.KafkaConfig, logging.FluentForwarderConfig)
+	if err != nil {
+		return nil, errors.Wrapf(err, "wrapper logging target failed")
+	}
+
+	wrapProjectName := strings.Replace(logging.ProjectName, ":", "_", -1)
+	return &ProjectLoggingTemplateWrap{
+		LoggingCommonField:        logging.LoggingCommonField,
+		LoggingTargetTemplateWrap: *wrap,
+		GrepNamespace:             grepNamespace,
+		IsSystemProject:           isSystemProject,
+		WrapProjectName:           wrapProjectName,
+	}, nil
+}
+
+type ElasticsearchTemplateWrap struct {
+	v3.ElasticsearchConfig
+	DateFormat string
+	Host       string
+	Scheme     string
+}
+
+type SplunkTemplateWrap struct {
+	v3.SplunkConfig
+	Host   string
+	Port   string
+	Scheme string
+}
+
+type KafkaTemplateWrap struct {
+	v3.KafkaConfig
+	Brokers   string
+	Zookeeper string
+}
+
+type SyslogTemplateWrap struct {
+	v3.SyslogConfig
+	Host string
+	Port string
+}
+
+type FluentForwarderTemplateWrap struct {
+	v3.FluentForwarderConfig
+	EnableShareKey bool
+	FluentServers  []FluentServer
+}
+
+type FluentServer struct {
+	Host string
+	Port string
+	v3.FluentServer
+}
+
+func NewLoggingTargetTemplateWrap(es *v3.ElasticsearchConfig, sp *v3.SplunkConfig, sl *v3.SyslogConfig, kf *v3.KafkaConfig, ff *v3.FluentForwarderConfig) (wrapLogging *LoggingTargetTemplateWrap, err error) {
+	wp := &LoggingTargetTemplateWrap{}
+	if es != nil {
+
+		wrap, err := newElasticsearchTemplateWrap(es)
+		if err != nil {
+			return nil, err
+		}
+		wp.ElasticsearchTemplateWrap = *wrap
+		wp.CurrentTarget = loggingconfig.Elasticsearch
+
+	} else if sp != nil {
+
+		wrap, err := newSplunkTemplateWrap(sp)
+		if err != nil {
+			return nil, err
+		}
+		wp.SplunkTemplateWrap = *wrap
+		wp.CurrentTarget = loggingconfig.Splunk
+
+	} else if sl != nil {
+
+		wrap, err := newSyslogTemplateWrap(sl)
+		if err != nil {
+			return nil, err
+		}
+		wp.SyslogTemplateWrap = *wrap
+		wp.CurrentTarget = loggingconfig.Syslog
+
+	} else if kf != nil {
+
+		wrap, err := newKafkaTemplateWrap(kf)
+		if err != nil {
+			return nil, err
+		}
+		wp.KafkaTemplateWrap = *wrap
+		wp.CurrentTarget = loggingconfig.Kafka
+
+	} else if ff != nil {
+
+		wrap, err := newFluentForwarderTemplateWrap(ff)
+		if err != nil {
+			return nil, err
+		}
+		wp.FluentForwarderTemplateWrap = *wrap
+		wp.CurrentTarget = loggingconfig.FluentForwarder
+
+	}
+	return wp, nil
+}
+
+func newElasticsearchTemplateWrap(elasticsearchConfig *v3.ElasticsearchConfig) (*ElasticsearchTemplateWrap, error) {
+	h, s, err := parseEndpoint(elasticsearchConfig.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+	return &ElasticsearchTemplateWrap{
+		ElasticsearchConfig: *elasticsearchConfig,
+		Host:                h,
+		Scheme:              s,
+		DateFormat:          getDateFormat(elasticsearchConfig.DateFormat),
+	}, nil
+}
+
+func newSplunkTemplateWrap(splunkConfig *v3.SplunkConfig) (*SplunkTemplateWrap, error) {
+	h, s, err := parseEndpoint(splunkConfig.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	host, port, err := net.SplitHostPort(h)
+	if err != nil {
+		return nil, err
+	}
+	return &SplunkTemplateWrap{
+		SplunkConfig: *splunkConfig,
+		Host:         host,
+		Scheme:       s,
+		Port:         port,
+	}, nil
+}
+
+func newSyslogTemplateWrap(syslogConfig *v3.SyslogConfig) (*SyslogTemplateWrap, error) {
+	host, port, err := net.SplitHostPort(syslogConfig.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+	return &SyslogTemplateWrap{
+		SyslogConfig: *syslogConfig,
+		Host:         host,
+		Port:         port,
+	}, nil
+}
+
+func newKafkaTemplateWrap(kafkaConfig *v3.KafkaConfig) (*KafkaTemplateWrap, error) {
+	wrap := &KafkaTemplateWrap{
+		KafkaConfig: *kafkaConfig,
+	}
+	if len(kafkaConfig.BrokerEndpoints) == 0 && kafkaConfig.ZookeeperEndpoint == "" {
+		err := errors.New("one of the kafka endpoint must be set")
+		return nil, err
+	}
+	if len(kafkaConfig.BrokerEndpoints) != 0 {
+		var bs []string
+		for _, v := range kafkaConfig.BrokerEndpoints {
+			h, _, err := parseEndpoint(v)
+			if err != nil {
+				return nil, err
+			}
+			bs = append(bs, h)
+		}
+		wrap.Brokers = strings.Join(bs, ",")
+	} else {
+		if kafkaConfig.ZookeeperEndpoint != "" {
+			h, _, err := parseEndpoint(kafkaConfig.ZookeeperEndpoint)
+			if err != nil {
+				return nil, err
+			}
+			wrap.Zookeeper = h
+		}
+	}
+	return wrap, nil
+}
+
+func newFluentForwarderTemplateWrap(fluentForwarderConfig *v3.FluentForwarderConfig) (*FluentForwarderTemplateWrap, error) {
+	var enableShareKey bool
+	var fss []FluentServer
+	for _, v := range fluentForwarderConfig.FluentServers {
+		host, port, err := net.SplitHostPort(v.Endpoint)
+		if err != nil {
+			return nil, err
+		}
+		if v.SharedKey != "" {
+			enableShareKey = true
+		}
+		fs := FluentServer{
+			Host:         host,
+			Port:         port,
+			FluentServer: v,
+		}
+		fss = append(fss, fs)
+	}
+
+	return &FluentForwarderTemplateWrap{
+		FluentForwarderConfig: *fluentForwarderConfig,
+		EnableShareKey:        enableShareKey,
+		FluentServers:         fss,
+	}, nil
+}
+
+func parseEndpoint(endpoint string) (host string, scheme string, err error) {
+	u, err := url.ParseRequestURI(endpoint)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "invalid endpoint %s", endpoint)
+	}
+
+	if u.Host == "" || u.Scheme == "" {
+		return "", "", fmt.Errorf("invalid endpoint %s, empty host or schema", endpoint)
+	}
+
+	return u.Host, u.Scheme, nil
+}
+
+func getDateFormat(dateformat string) string {
+	ToRealMap := map[string]string{
+		"YYYY-MM-DD": "%Y-%m-%d",
+		"YYYY-MM":    "%Y-%m",
+		"YYYY":       "%Y",
+	}
+	if _, ok := ToRealMap[dateformat]; ok {
+		return ToRealMap[dateformat]
+	}
+	return "%Y-%m-%d"
+}

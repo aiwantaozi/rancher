@@ -380,11 +380,13 @@ func LoggingTypes(schemas *types.Schemas, management *config.ScaledContext) {
 	schema := schemas.Schema(&managementschema.Version, client.ClusterLoggingType)
 	// schema.Validator = logging.ClusterLoggingValidator
 	schema.Formatter = logging.Formatter
+	schema.CollectionFormatter = logging.CollectionFormatter
 	schema.ActionHandler = handler.ActionHandler
 
 	schema = schemas.Schema(&managementschema.Version, client.ProjectLoggingType)
 	// schema.Validator = logging.ProjectLoggingValidator
 	schema.Formatter = logging.Formatter
+	schema.CollectionFormatter = logging.CollectionFormatter
 	schema.ActionHandler = handler.ActionHandler
 }
 

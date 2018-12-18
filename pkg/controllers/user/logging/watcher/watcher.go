@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"github.com/rancher/rancher/pkg/controllers/user/logging/utils"
@@ -56,10 +57,17 @@ func (e *endpointWatcher) checkTarget() error {
 		return errors.Wrapf(err, "get cluster dailer %s failed", obj.Spec.ClusterName)
 	}
 
-	wl := utils.NewWrapLogging(obj.Spec.ElasticsearchConfig, obj.Spec.SplunkConfig, obj.Spec.SyslogConfig, obj.Spec.KafkaConfig, obj.Spec.FluentForwarderConfig)
-	err = wl.GetLoggingTarget().TestReachable(clusterDialer)
-	updatedObj := setClusterLoggingErrMsg(obj, err)
+	wl := utils.NewLoggingTargetTestWrap(obj.Spec.ElasticsearchConfig, obj.Spec.SplunkConfig, obj.Spec.SyslogConfig, obj.Spec.KafkaConfig, obj.Spec.FluentForwarderConfig)
+	if wl == nil {
+		err = nil
+	} else {
+		err = wl.TestReachable(clusterDialer)
+	}
 
+	updatedObj := setClusterLoggingErrMsg(obj, err)
+	if reflect.DeepEqual(updatedObj, obj) {
+		return nil
+	}
 	_, updateErr := e.clusterLoggings.Update(updatedObj)
 	if updateErr != errors.Wrapf(updateErr, "set clusterlogging fail in watch endpoint") {
 		return updateErr
@@ -71,9 +79,18 @@ func (e *endpointWatcher) checkTarget() error {
 	}
 
 	for _, v := range pls {
-		wp := utils.NewWrapLogging(v.Spec.ElasticsearchConfig, v.Spec.SplunkConfig, v.Spec.SyslogConfig, v.Spec.KafkaConfig, v.Spec.FluentForwarderConfig)
-		err = wp.GetLoggingTarget().TestReachable(clusterDialer)
+		wp := utils.NewLoggingTargetTestWrap(v.Spec.ElasticsearchConfig, v.Spec.SplunkConfig, v.Spec.SyslogConfig, v.Spec.KafkaConfig, v.Spec.FluentForwarderConfig)
+		if wp == nil {
+			err = nil
+		} else {
+			err = wp.TestReachable(clusterDialer)
+		}
+
 		updatedObj := setProjectLoggingErrMsg(v, err)
+		if reflect.DeepEqual(updatedObj, v) {
+			continue
+		}
+
 		_, updateErr := e.projectLoggings.Update(updatedObj)
 		if updateErr != errors.Wrapf(updateErr, "set project fail in watch endpoint") {
 			return updateErr

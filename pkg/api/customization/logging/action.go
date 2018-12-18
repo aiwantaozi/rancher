@@ -22,6 +22,10 @@ func Formatter(apiContext *types.APIContext, resource *types.RawResource) {
 	resource.AddAction(apiContext, "test")
 }
 
+func CollectionFormatter(apiContext *types.APIContext, resource *types.GenericCollection) {
+	resource.AddAction(apiContext, "test")
+}
+
 func (h *Handler) ActionHandler(actionName string, action *types.Action, apiContext *types.APIContext) error {
 	switch actionName {
 	case "test":
@@ -52,7 +56,9 @@ func (h *Handler) testLoggingTarget(actionName string, action *types.Action, api
 		return fmt.Errorf("get cluster dialer failed, %v", err)
 	}
 
-	wp := utils.NewWrapLogging(input.ElasticsearchConfig, input.SplunkConfig, input.SyslogConfig, input.KafkaConfig, input.FluentForwarderConfig)
-	loggingTargt := wp.GetLoggingTarget()
-	return loggingTargt.TestReachable(clusterDialer)
+	wp := utils.NewLoggingTargetTestWrap(input.ElasticsearchConfig, input.SplunkConfig, input.SyslogConfig, input.KafkaConfig, input.FluentForwarderConfig)
+	if wp == nil {
+		return nil
+	}
+	return wp.TestReachable(clusterDialer)
 }
