@@ -227,12 +227,21 @@ func (s *ConfigSyncer) syncProjectConfig(projectLoggings []*mgmtv3.ProjectLoggin
 			}
 		}
 
+		if len(grepNamespace) == 0 {
+			continue
+		}
+
 		formatgrepNamespace := fmt.Sprintf("(%s)", strings.Join(grepNamespace, "|"))
 		isSystemProject := v.Spec.ProjectName == systemProjectID
 		wpl, err := utils.NewWrapProjectLogging(v.Spec, formatgrepNamespace, isSystemProject)
 		if err != nil {
 			return err
 		}
+
+		if wpl == nil {
+			continue
+		}
+
 		wl = append(wl, *wpl)
 	}
 

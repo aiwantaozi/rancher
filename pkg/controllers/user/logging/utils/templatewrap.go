@@ -42,6 +42,10 @@ func NewWrapClusterLogging(logging v3.ClusterLoggingSpec, excludeNamespace strin
 		return nil, errors.Wrapf(err, "wrapper logging target failed")
 	}
 
+	if wrap == nil {
+		return nil, nil
+	}
+
 	return &ClusterLoggingTemplateWrap{
 		LoggingCommonField:        logging.LoggingCommonField,
 		LoggingTargetTemplateWrap: *wrap,
@@ -54,6 +58,10 @@ func NewWrapProjectLogging(logging v3.ProjectLoggingSpec, grepNamespace string, 
 	wrap, err := NewLoggingTargetTemplateWrap(logging.ElasticsearchConfig, logging.SplunkConfig, logging.SyslogConfig, logging.KafkaConfig, logging.FluentForwarderConfig)
 	if err != nil {
 		return nil, errors.Wrapf(err, "wrapper logging target failed")
+	}
+
+	if wrap == nil {
+		return nil, nil
 	}
 
 	wrapProjectName := strings.Replace(logging.ProjectName, ":", "_", -1)
@@ -114,6 +122,7 @@ func NewLoggingTargetTemplateWrap(es *v3.ElasticsearchConfig, sp *v3.SplunkConfi
 		}
 		wp.ElasticsearchTemplateWrap = *wrap
 		wp.CurrentTarget = loggingconfig.Elasticsearch
+		return wp, nil
 
 	} else if sp != nil {
 
@@ -123,6 +132,7 @@ func NewLoggingTargetTemplateWrap(es *v3.ElasticsearchConfig, sp *v3.SplunkConfi
 		}
 		wp.SplunkTemplateWrap = *wrap
 		wp.CurrentTarget = loggingconfig.Splunk
+		return wp, nil
 
 	} else if sl != nil {
 
@@ -132,6 +142,7 @@ func NewLoggingTargetTemplateWrap(es *v3.ElasticsearchConfig, sp *v3.SplunkConfi
 		}
 		wp.SyslogTemplateWrap = *wrap
 		wp.CurrentTarget = loggingconfig.Syslog
+		return wp, nil
 
 	} else if kf != nil {
 
@@ -141,6 +152,7 @@ func NewLoggingTargetTemplateWrap(es *v3.ElasticsearchConfig, sp *v3.SplunkConfi
 		}
 		wp.KafkaTemplateWrap = *wrap
 		wp.CurrentTarget = loggingconfig.Kafka
+		return wp, nil
 
 	} else if ff != nil {
 
@@ -150,9 +162,11 @@ func NewLoggingTargetTemplateWrap(es *v3.ElasticsearchConfig, sp *v3.SplunkConfi
 		}
 		wp.FluentForwarderTemplateWrap = *wrap
 		wp.CurrentTarget = loggingconfig.FluentForwarder
+		return wp, nil
 
 	}
-	return wp, nil
+
+	return nil, nil
 }
 
 func newElasticsearchTemplateWrap(elasticsearchConfig *v3.ElasticsearchConfig) (*ElasticsearchTemplateWrap, error) {

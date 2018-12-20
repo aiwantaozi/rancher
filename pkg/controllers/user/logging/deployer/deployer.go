@@ -86,7 +86,11 @@ func (d *Deployer) sync() error {
 	}
 
 	if allDisabled {
-		return d.cleanResource()
+		if err := d.cleanResource(); err != nil {
+			return err
+		}
+		*d.isDeploy = false
+		return nil
 	}
 
 	if err := d.deploy(); err != nil {
