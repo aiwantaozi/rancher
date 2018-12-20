@@ -258,7 +258,7 @@ var ProjectTemplate = `{{range $i, $store := .projectTargets -}}
     
     <buffer>
       @type file
-      path /fluentd/etc/buffer/project.{{$store.WrapProjectName}}.buffer
+      path /fluentd/log/buffer/project.{{$store.WrapProjectName}}.buffer
       flush_interval {{$store.OutputFlushInterval}}s
       {{ if eq $store.CurrentTarget "splunk"}}
       buffer_chunk_limit 8m

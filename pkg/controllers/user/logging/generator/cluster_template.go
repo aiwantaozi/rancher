@@ -266,7 +266,7 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
 
     <buffer>
       @type file
-      path /fluentd/etc/buffer/cluster.buffer
+      path /fluentd/log/buffer/cluster.buffer
       flush_interval {{.clusterTarget.OutputFlushInterval}}s
       {{ if eq .clusterTarget.CurrentTarget "splunk"}}
       chunk_limit_size 8m
