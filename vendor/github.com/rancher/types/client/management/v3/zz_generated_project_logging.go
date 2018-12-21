@@ -9,6 +9,7 @@ const (
 	ProjectLoggingFieldAnnotations           = "annotations"
 	ProjectLoggingFieldCreated               = "created"
 	ProjectLoggingFieldCreatorID             = "creatorId"
+	ProjectLoggingFieldCustomTargetConfig    = "customTargetConfig"
 	ProjectLoggingFieldElasticsearchConfig   = "elasticsearchConfig"
 	ProjectLoggingFieldFluentForwarderConfig = "fluentForwarderConfig"
 	ProjectLoggingFieldKafkaConfig           = "kafkaConfig"
@@ -34,6 +35,7 @@ type ProjectLogging struct {
 	Annotations           map[string]string      `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	Created               string                 `json:"created,omitempty" yaml:"created,omitempty"`
 	CreatorID             string                 `json:"creatorId,omitempty" yaml:"creatorId,omitempty"`
+	CustomTargetConfig    *CustomTargetConfig    `json:"customTargetConfig,omitempty" yaml:"customTargetConfig,omitempty"`
 	ElasticsearchConfig   *ElasticsearchConfig   `json:"elasticsearchConfig,omitempty" yaml:"elasticsearchConfig,omitempty"`
 	FluentForwarderConfig *FluentForwarderConfig `json:"fluentForwarderConfig,omitempty" yaml:"fluentForwarderConfig,omitempty"`
 	KafkaConfig           *KafkaConfig           `json:"kafkaConfig,omitempty" yaml:"kafkaConfig,omitempty"`
@@ -71,6 +73,14 @@ type ProjectLoggingOperations interface {
 	Replace(existing *ProjectLogging) (*ProjectLogging, error)
 	ByID(id string) (*ProjectLogging, error)
 	Delete(container *ProjectLogging) error
+
+	ActionDryRun(resource *ProjectLogging, input *ProjectTestInput) error
+
+	ActionTest(resource *ProjectLogging, input *ProjectTestInput) error
+
+	CollectionActionDryRun(resource *ProjectLoggingCollection, input *ProjectTestInput) error
+
+	CollectionActionTest(resource *ProjectLoggingCollection, input *ProjectTestInput) error
 }
 
 func newProjectLoggingClient(apiClient *Client) *ProjectLoggingClient {
@@ -122,4 +132,24 @@ func (c *ProjectLoggingClient) ByID(id string) (*ProjectLogging, error) {
 
 func (c *ProjectLoggingClient) Delete(container *ProjectLogging) error {
 	return c.apiClient.Ops.DoResourceDelete(ProjectLoggingType, &container.Resource)
+}
+
+func (c *ProjectLoggingClient) ActionDryRun(resource *ProjectLogging, input *ProjectTestInput) error {
+	err := c.apiClient.Ops.DoAction(ProjectLoggingType, "dryRun", &resource.Resource, input, nil)
+	return err
+}
+
+func (c *ProjectLoggingClient) ActionTest(resource *ProjectLogging, input *ProjectTestInput) error {
+	err := c.apiClient.Ops.DoAction(ProjectLoggingType, "test", &resource.Resource, input, nil)
+	return err
+}
+
+func (c *ProjectLoggingClient) CollectionActionDryRun(resource *ProjectLoggingCollection, input *ProjectTestInput) error {
+	err := c.apiClient.Ops.DoCollectionAction(ProjectLoggingType, "dryRun", &resource.Collection, input, nil)
+	return err
+}
+
+func (c *ProjectLoggingClient) CollectionActionTest(resource *ProjectLoggingCollection, input *ProjectTestInput) error {
+	err := c.apiClient.Ops.DoCollectionAction(ProjectLoggingType, "test", &resource.Collection, input, nil)
+	return err
 }
