@@ -122,12 +122,12 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
     ssl_verify {{ .clusterTarget.ElasticsearchConfig.SSLVerify }}
     ssl_version {{ .clusterTarget.ElasticsearchConfig.SSLVersion }}
     {{- if .clusterTarget.ElasticsearchConfig.Certificate }}
-    ca_file /fluentd/etc/ssl/cluster_{{.clusterName}}_ca.pem
+    ca_file /fluentd/etc/config/precan/cluster_{{.clusterName}}_ca.pem
     {{end }}
 
     {{- if and .clusterTarget.ElasticsearchConfig.ClientCert .clusterTarget.ElasticsearchConfig.ClientKey}}
-    client_cert /fluentd/etc/ssl/cluster_{{.clusterName}}_client-cert.pem
-    client_key /fluentd/etc/ssl/cluster_{{.clusterName}}_client-key.pem
+    client_cert /fluentd/etc/config/precan/cluster_{{.clusterName}}_client-cert.pem
+    client_key /fluentd/etc/config/precan/cluster_{{.clusterName}}_client-key.pem
     {{end }}
 
     {{- if .clusterTarget.ElasticsearchConfig.ClientKeyPass}}
@@ -154,12 +154,12 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
     ssl_verify {{ .clusterTarget.SplunkConfig.SSLVerify }}
 
     {{- if .clusterTarget.SplunkConfig.Certificate }}    
-    ca_file /fluentd/etc/ssl/cluster_{{.clusterName}}_ca.pem
+    ca_file /fluentd/etc/config/precan/cluster_{{.clusterName}}_ca.pem
     {{end }}
 
     {{- if and .clusterTarget.SplunkConfig.ClientCert .clusterTarget.SplunkConfig.ClientKey}}    
-    client_cert /fluentd/etc/ssl/cluster_{{.clusterName}}_client-cert.pem
-    client_key /fluentd/etc/ssl/cluster_{{.clusterName}}_client-key.pem
+    client_cert /fluentd/etc/config/precan/cluster_{{.clusterName}}_client-cert.pem
+    client_key /fluentd/etc/config/precan/cluster_{{.clusterName}}_client-key.pem
     {{end }}
 
     {{- if .clusterTarget.SplunkConfig.ClientKeyPass}}    
@@ -181,14 +181,24 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
     output_include_time true
 
     {{- if .clusterTarget.KafkaConfig.Certificate }}        
-    ssl_ca_cert /fluentd/etc/ssl/cluster_{{.clusterName}}_ca.pem
+    ssl_ca_cert /fluentd/etc/config/precan/cluster_{{.clusterName}}_ca.pem
     {{end }}
 
     {{- if and .clusterTarget.KafkaConfig.ClientCert .clusterTarget.KafkaConfig.ClientKey}}        
-    ssl_client_cert /fluentd/etc/ssl/cluster_{{.clusterName}}_client-cert.pem
-    ssl_client_cert_key /fluentd/etc/ssl/cluster_{{.clusterName}}_client-key.pem
+    ssl_client_cert /fluentd/etc/config/precan/cluster_{{.clusterName}}_client-cert.pem
+    ssl_client_cert_key /fluentd/etc/config/precan/cluster_{{.clusterName}}_client-key.pem
     {{end }}
     max_send_retries  3
+
+    {{- if and .clusterTarget.KafkaConfig.SaslUsername .clusterTarget.KafkaConfig.SaslPassword}}        
+    username {{.clusterTarget.KafkaConfig.SaslUsername}}
+    password {{.clusterTarget.KafkaConfig.SaslPassword}}
+    {{end }}
+
+    {{- if and (eq .clusterTarget.KafkaConfig.SaslType "scram") .clusterTarget.KafkaConfig.SaslScramMechanism}}        
+    scram_mechanism {{.clusterTarget.KafkaConfig.SaslScramMechanism}}
+    {{end }}
+
     {{end }}
 
     {{- if eq .clusterTarget.CurrentTarget "syslog"}}
@@ -210,12 +220,12 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
 
     {{- if .clusterTarget.SyslogConfig.Certificate }}
     tls true        
-    ca_file /fluentd/etc/ssl/cluster_{{.clusterName}}_ca.pem
+    ca_file /fluentd/etc/config/precan/cluster_{{.clusterName}}_ca.pem
     {{end}}
 
     {{- if and .clusterTarget.SyslogConfig.ClientCert .clusterTarget.SyslogConfig.ClientKey}}        
-    client_cert /fluentd/etc/ssl/cluster_{{.clusterName}}_client-cert.pem
-    client_cert_key /fluentd/etc/ssl/cluster_{{.clusterName}}_client-key.pem
+    client_cert /fluentd/etc/config/precan/cluster_{{.clusterName}}_client-cert.pem
+    client_cert_key /fluentd/etc/config/precan/cluster_{{.clusterName}}_client-key.pem
     {{end }}
     {{end }}
 
@@ -227,7 +237,7 @@ var ClusterTemplate = `{{ if .clusterTarget.CurrentTarget }}
     tls_allow_self_signed_cert true
     {{end }}    
     {{ if .clusterTarget.FluentForwarderConfig.Certificate }}
-    tls_cert_path /fluentd/etc/ssl/cluster_{{.clusterName}}_ca.pem
+    tls_cert_path /fluentd/etc/config/precan/cluster_{{.clusterName}}_ca.pem
     {{end }}  
     
     {{- if .clusterTarget.FluentForwarderConfig.Compress }}

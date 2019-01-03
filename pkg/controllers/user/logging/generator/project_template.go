@@ -118,12 +118,12 @@ var ProjectTemplate = `
       ssl_version {{ $store.ElasticsearchConfig.SSLVersion }}
 
       {{- if $store.ElasticsearchConfig.Certificate }}
-      ca_file /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_ca.pem
+      ca_file /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_ca.pem
       {{end }}
 
       {{- if and $store.ElasticsearchConfig.ClientCert $store.ElasticsearchConfig.ClientKey}}
-      client_cert /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_client-cert.pem
-      client_key /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_client-key.pem
+      client_cert /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_client-cert.pem
+      client_key /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_client-key.pem
       {{end }}
 
       {{- if $store.ElasticsearchConfig.ClientKeyPass}}
@@ -149,12 +149,12 @@ var ProjectTemplate = `
       ssl_verify {{$store.SplunkConfig.SSLVerify}}    
 
       {{- if $store.SplunkConfig.Certificate }}    
-      ca_file /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_ca.pem
+      ca_file /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_ca.pem
       {{end }}
 
       {{- if and $store.SplunkConfig.ClientCert $store.SplunkConfig.ClientKey}}    
-      client_cert /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_client-cert.pem
-      client_key /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_client-key.pem
+      client_cert /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_client-cert.pem
+      client_key /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_client-key.pem
       {{end }}
 
       {{- if $store.SplunkConfig.ClientKeyPass}}    
@@ -178,12 +178,21 @@ var ProjectTemplate = `
       max_send_retries 3
 
       {{- if $store.KafkaConfig.Certificate }}        
-      ssl_ca_cert /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_ca.pem
+      ssl_ca_cert /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_ca.pem
       {{end }}
 
       {{- if and $store.KafkaConfig.ClientCert $store.KafkaConfig.ClientKey}}        
-      ssl_client_cert /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_client-cert.pem
-      ssl_client_cert_key /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_client-key.pem
+      ssl_client_cert /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_client-cert.pem
+      ssl_client_cert_key /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_client-key.pem
+      {{end }}
+      
+      {{- if and $store.KafkaConfig.SaslUsername $store.KafkaConfig.SaslPassword}}        
+      username {{$store.KafkaConfig.SaslUsername}}
+      password {{$store.KafkaConfig.SaslPassword}}
+      {{end }}
+  
+      {{- if and (eq  $store.KafkaConfig.SaslType "scram")  $store.KafkaConfig.SaslScramMechanism}}        
+      scram_mechanism {{ $store.KafkaConfig.SaslScramMechanism}}
       {{end }}
       {{end }}
 
@@ -206,12 +215,12 @@ var ProjectTemplate = `
 
       {{- if $store.SyslogConfig.Certificate }}
       tls true        
-      ca_file /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_ca.pem
+      ca_file /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_ca.pem
       {{end }}
 
       {{- if and $store.SyslogConfig.ClientCert $store.SyslogConfig.ClientKey}}        
-      client_cert /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_client-cert.pem
-      client_cert_key /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_client-key.pem
+      client_cert /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_client-cert.pem
+      client_cert_key /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_client-key.pem
       {{end }}
       {{end }}
 
@@ -223,7 +232,7 @@ var ProjectTemplate = `
       tls_verify_hostname true
       {{end }}
       {{- if $store.FluentForwarderConfig.Certificate }}
-      tls_cert_path /fluentd/etc/ssl/project_{{$store.WrapProjectName}}_ca.pem
+      tls_cert_path /fluentd/etc/config/precan/project_{{$store.WrapProjectName}}_ca.pem
       {{end }}  
 
       {{- if $store.FluentForwarderConfig.Compress }}
