@@ -40,7 +40,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	// init upgrade implement
-	_ "github.com/rancher/rancher/pkg/controllers/user/logging/upgrade"
+	_ "github.com/rancher/rancher/pkg/controllers/user/alert/deployer"
+	_ "github.com/rancher/rancher/pkg/controllers/user/logging/deployer"
 	_ "github.com/rancher/rancher/pkg/controllers/user/pipeline/upgrade"
 )
 

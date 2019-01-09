@@ -16,7 +16,6 @@ import (
 	"github.com/rancher/rancher/pkg/api/customization/clusterregistrationtokens"
 	"github.com/rancher/rancher/pkg/api/customization/globalresource"
 	"github.com/rancher/rancher/pkg/api/customization/kontainerdriver"
-	"github.com/rancher/rancher/pkg/api/customization/logging"
 	"github.com/rancher/rancher/pkg/api/customization/monitor"
 	"github.com/rancher/rancher/pkg/api/customization/node"
 	"github.com/rancher/rancher/pkg/api/customization/nodetemplate"
@@ -133,7 +132,6 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 	Preference(schemas, apiContext)
 	ClusterRegistrationTokens(schemas)
 	NodeTemplates(schemas, apiContext)
-	LoggingTypes(schemas)
 	Alert(schemas, apiContext)
 	Pipeline(schemas, apiContext, clusterManager)
 	Project(schemas, apiContext)
@@ -371,14 +369,6 @@ func App(schemas *types.Schemas, management *config.ScaledContext, kubeConfigGet
 func Setting(schemas *types.Schemas) {
 	schema := schemas.Schema(&managementschema.Version, client.SettingType)
 	schema.Formatter = setting.Formatter
-}
-
-func LoggingTypes(schemas *types.Schemas) {
-	schema := schemas.Schema(&managementschema.Version, client.ClusterLoggingType)
-	schema.Validator = logging.ClusterLoggingValidator
-
-	schema = schemas.Schema(&managementschema.Version, client.ProjectLoggingType)
-	schema.Validator = logging.ProjectLoggingValidator
 }
 
 func Alert(schemas *types.Schemas, management *config.ScaledContext) {
