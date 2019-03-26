@@ -142,6 +142,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ProjectMonitorGraphList{},
 		&CloudCredential{},
 		&CloudCredentialList{},
+		&IstioConfig{},
+		&IstioConfigList{},
 	)
 	return nil
 }

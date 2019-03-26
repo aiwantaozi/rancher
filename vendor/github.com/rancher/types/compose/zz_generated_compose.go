@@ -61,6 +61,7 @@ type Config struct {
 	ProjectMonitorGraphs                     map[string]managementClient.ProjectMonitorGraph                     `json:"projectMonitorGraphs,omitempty" yaml:"projectMonitorGraphs,omitempty"`
 	CloudCredentials                         map[string]managementClient.CloudCredential                         `json:"cloudCredentials,omitempty" yaml:"cloudCredentials,omitempty"`
 	ManagementSecrets                        map[string]managementClient.ManagementSecret                        `json:"managementSecrets,omitempty" yaml:"managementSecrets,omitempty"`
+	IstioConfigs                             map[string]managementClient.IstioConfig                             `json:"istioConfigs,omitempty" yaml:"istioConfigs,omitempty"`
 
 	// Cluster Client
 	Namespaces        map[string]clusterClient.Namespace        `json:"namespaces,omitempty" yaml:"namespaces,omitempty"`
@@ -107,4 +108,7 @@ type Config struct {
 	ServiceMonitors                map[string]projectClient.ServiceMonitor                `json:"serviceMonitors,omitempty" yaml:"serviceMonitors,omitempty"`
 	PrometheusRules                map[string]projectClient.PrometheusRule                `json:"prometheusRules,omitempty" yaml:"prometheusRules,omitempty"`
 	Alertmanagers                  map[string]projectClient.Alertmanager                  `json:"alertmanagers,omitempty" yaml:"alertmanagers,omitempty"`
+	Gateways                       map[string]projectClient.Gateway                       `json:"gateways,omitempty" yaml:"gateways,omitempty"`
+	VirtualServices                map[string]projectClient.VirtualService                `json:"virtualServices,omitempty" yaml:"virtualServices,omitempty"`
+	DestinationRules               map[string]projectClient.DestinationRule               `json:"destinationRules,omitempty" yaml:"destinationRules,omitempty"`
 }

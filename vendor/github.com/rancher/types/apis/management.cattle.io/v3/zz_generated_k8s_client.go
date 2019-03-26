@@ -75,6 +75,7 @@ type Interface interface {
 	ClusterMonitorGraphsGetter
 	ProjectMonitorGraphsGetter
 	CloudCredentialsGetter
+	IstioConfigsGetter
 }
 
 type Clients struct {
@@ -135,6 +136,7 @@ type Clients struct {
 	ClusterMonitorGraph                     ClusterMonitorGraphClient
 	ProjectMonitorGraph                     ProjectMonitorGraphClient
 	CloudCredential                         CloudCredentialClient
+	IstioConfig                             IstioConfigClient
 }
 
 type Client struct {
@@ -197,6 +199,7 @@ type Client struct {
 	clusterMonitorGraphControllers                     map[string]ClusterMonitorGraphController
 	projectMonitorGraphControllers                     map[string]ProjectMonitorGraphController
 	cloudCredentialControllers                         map[string]CloudCredentialController
+	istioConfigControllers                             map[string]IstioConfigController
 }
 
 func Factory(ctx context.Context, config rest.Config) (context.Context, controller.Starter, error) {
@@ -397,6 +400,9 @@ func NewClientsFromInterface(iface Interface) *Clients {
 		CloudCredential: &cloudCredentialClient2{
 			iface: iface.CloudCredentials(""),
 		},
+		IstioConfig: &istioConfigClient2{
+			iface: iface.IstioConfigs(""),
+		},
 	}
 }
 
@@ -468,6 +474,7 @@ func NewForConfig(config rest.Config) (Interface, error) {
 		clusterMonitorGraphControllers:                     map[string]ClusterMonitorGraphController{},
 		projectMonitorGraphControllers:                     map[string]ProjectMonitorGraphController{},
 		cloudCredentialControllers:                         map[string]CloudCredentialController{},
+		istioConfigControllers:                             map[string]IstioConfigController{},
 	}, nil
 }
 
@@ -1192,6 +1199,19 @@ type CloudCredentialsGetter interface {
 func (c *Client) CloudCredentials(namespace string) CloudCredentialInterface {
 	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &CloudCredentialResource, CloudCredentialGroupVersionKind, cloudCredentialFactory{})
 	return &cloudCredentialClient{
+		ns:           namespace,
+		client:       c,
+		objectClient: objectClient,
+	}
+}
+
+type IstioConfigsGetter interface {
+	IstioConfigs(namespace string) IstioConfigInterface
+}
+
+func (c *Client) IstioConfigs(namespace string) IstioConfigInterface {
+	objectClient := objectclient.NewObjectClient(namespace, c.restClient, &IstioConfigResource, IstioConfigGroupVersionKind, istioConfigFactory{})
+	return &istioConfigClient{
 		ns:           namespace,
 		client:       c,
 		objectClient: objectClient,
