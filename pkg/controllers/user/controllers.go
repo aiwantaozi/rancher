@@ -4,6 +4,8 @@ import (
 	"context"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1"
+	inetworkingv1alpha3 "github.com/knative/pkg/apis/istio/v1alpha3"
+
 	"github.com/rancher/norman/store/crd"
 	"github.com/rancher/norman/types"
 	"github.com/rancher/rancher/pkg/controllers/management/compose/common"
@@ -34,6 +36,7 @@ import (
 	"github.com/rancher/rancher/pkg/controllers/user/systemimage"
 	"github.com/rancher/rancher/pkg/controllers/user/targetworkloadservice"
 	"github.com/rancher/rancher/pkg/controllers/user/workload"
+	pkgistio "github.com/rancher/rancher/pkg/istio"
 	pkgmonitoring "github.com/rancher/rancher/pkg/monitoring"
 	managementv3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	projectclient "github.com/rancher/types/client/project/v3"
@@ -126,6 +129,11 @@ func createUserClusterCRDs(ctx context.Context, c *config.UserOnlyContext) error
 		MustImport(&pkgmonitoring.APIVersion, monitoringv1.ServiceMonitor{}, overrided).
 		MustImport(&pkgmonitoring.APIVersion, monitoringv1.Alertmanager{}, overrided)
 
+	istioSchemas := factory.Schemas(&pkgistio.APIVersion).
+		MustImport(&pkgistio.APIVersion, inetworkingv1alpha3.Gateway{}, overrided).
+		MustImport(&pkgistio.APIVersion, inetworkingv1alpha3.VirtualService{}, overrided).
+		MustImport(&pkgistio.APIVersion, inetworkingv1alpha3.DestinationRule{}, overrided)
+
 	f, err := crd.NewFactoryFromClient(c.RESTConfig)
 	if err != nil {
 		return err
@@ -136,6 +144,9 @@ func createUserClusterCRDs(ctx context.Context, c *config.UserOnlyContext) error
 		schemas.Schema(&pkgmonitoring.APIVersion, projectclient.PrometheusRuleType),
 		schemas.Schema(&pkgmonitoring.APIVersion, projectclient.AlertmanagerType),
 		schemas.Schema(&pkgmonitoring.APIVersion, projectclient.ServiceMonitorType),
+		istioSchemas.Schema(&pkgistio.APIVersion, projectclient.GatewayType),
+		istioSchemas.Schema(&pkgistio.APIVersion, projectclient.VirtualServiceType),
+		istioSchemas.Schema(&pkgistio.APIVersion, projectclient.DestinationRuleType),
 	)
 
 	f.BatchWait()
