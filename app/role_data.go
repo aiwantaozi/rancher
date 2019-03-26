@@ -100,7 +100,8 @@ func addRoles(management *config.ManagementContext) (string, error) {
 		addRule().apiGroups("management.cattle.io").resources("clustermonitorgraphs").verbs("get", "list", "watch").
 		addRule().apiGroups("management.cattle.io").resources("etcdbackups").verbs("get", "list", "watch").
 		addRule().apiGroups("management.cattle.io").resources("catalogtemplates").verbs("get", "list", "watch").
-		addRule().apiGroups("management.cattle.io").resources("catalogtemplateversions").verbs("get", "list", "watch")
+		addRule().apiGroups("management.cattle.io").resources("catalogtemplateversions").verbs("get", "list", "watch").
+		addRule().apiGroups("management.cattle.io").resources("istioconfigs").verbs("get", "list", "watch")
 
 	rb.addRoleTemplate("Create Projects", "projects-create", "cluster", true, false, false, false).
 		addRule().apiGroups("management.cattle.io").resources("projects").verbs("create")

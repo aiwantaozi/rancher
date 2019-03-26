@@ -2,8 +2,9 @@ package managementstored
 
 import (
 	"context"
-	"github.com/rancher/rancher/pkg/namespace"
 	"net/http"
+
+	"github.com/rancher/rancher/pkg/namespace"
 
 	"github.com/rancher/norman/store/crd"
 	"github.com/rancher/norman/store/proxy"
@@ -18,6 +19,7 @@ import (
 	"github.com/rancher/rancher/pkg/api/customization/cred"
 	"github.com/rancher/rancher/pkg/api/customization/globaldns"
 	"github.com/rancher/rancher/pkg/api/customization/globalresource"
+	"github.com/rancher/rancher/pkg/api/customization/istioconfig"
 	"github.com/rancher/rancher/pkg/api/customization/kontainerdriver"
 	"github.com/rancher/rancher/pkg/api/customization/logging"
 	"github.com/rancher/rancher/pkg/api/customization/monitor"
@@ -85,6 +87,7 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 		client.GlobalRoleType,
 		client.GroupMemberType,
 		client.GroupType,
+		client.IstioConfigType,
 		client.KontainerDriverType,
 		client.ListenConfigType,
 		client.MultiClusterAppType,
@@ -158,6 +161,7 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 	GlobalDNSProviders(schemas, apiContext, localClusterEnabled)
 	Monitor(schemas, apiContext, clusterManager)
 	KontainerDriver(schemas, apiContext)
+	IstioConfig(schemas)
 
 	if err := NodeTypes(schemas, apiContext); err != nil {
 		return err
@@ -685,4 +689,9 @@ func GlobalDNSProviders(schemas *types.Schemas, management *config.ScaledContext
 		schema.CollectionMethods = []string{}
 		schema.ResourceMethods = []string{}
 	}
+}
+
+func IstioConfig(schemas *types.Schemas) {
+	schema := schemas.Schema(&managementschema.Version, client.IstioConfigType)
+	schema.Validator = istioconfig.Validator
 }

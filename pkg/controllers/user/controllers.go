@@ -18,6 +18,7 @@ import (
 	"github.com/rancher/rancher/pkg/controllers/user/helm"
 	"github.com/rancher/rancher/pkg/controllers/user/ingress"
 	"github.com/rancher/rancher/pkg/controllers/user/ingresshostgen"
+	"github.com/rancher/rancher/pkg/controllers/user/istioconfig"
 	"github.com/rancher/rancher/pkg/controllers/user/logging"
 	"github.com/rancher/rancher/pkg/controllers/user/monitoring"
 	"github.com/rancher/rancher/pkg/controllers/user/networkpolicy"
@@ -41,6 +42,7 @@ import (
 
 	// init upgrade implement
 	_ "github.com/rancher/rancher/pkg/controllers/user/alert/deployer"
+	_ "github.com/rancher/rancher/pkg/controllers/user/istioconfig/deployer"
 	_ "github.com/rancher/rancher/pkg/controllers/user/logging/deployer"
 	_ "github.com/rancher/rancher/pkg/controllers/user/pipeline/upgrade"
 )
@@ -67,6 +69,7 @@ func Register(ctx context.Context, cluster *config.UserContext, clusterRec *mana
 	globaldns.Register(ctx, cluster)
 	alert.Register(ctx, cluster)
 	monitoring.Register(ctx, cluster)
+	istioconfig.Register(ctx, cluster)
 
 	if clusterRec.Spec.LocalClusterAuthEndpoint.Enabled {
 		err := clusterauthtoken.CRDSetup(ctx, cluster.UserOnlyContext())
