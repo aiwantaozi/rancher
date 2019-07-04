@@ -5,24 +5,31 @@ import (
 	loggingconfig "github.com/rancher/rancher/pkg/controllers/user/logging/config"
 	"github.com/rancher/rancher/pkg/controllers/user/logging/configsyncer"
 	"github.com/rancher/rancher/pkg/controllers/user/logging/utils"
+	"github.com/rancher/rancher/pkg/namespace"
 	"github.com/rancher/rancher/pkg/project"
 	"github.com/rancher/rancher/pkg/ref"
 	"github.com/rancher/rancher/pkg/systemaccount"
+	v1 "github.com/rancher/types/apis/core/v1"
 	mgmtv3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/rancher/types/config"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/pkg/errors"
-	"github.com/rancher/rancher/pkg/namespace"
+	"golang.org/x/sync/errgroup"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+)
+
+var (
+	windowNodeLabel = labels.Set(map[string]string{"beta.kubernetes.io/os": "windows"}).AsSelector()
 )
 
 type Deployer struct {
 	clusterName          string
 	clusterLister        mgmtv3.ClusterLister
 	clusterLoggingLister mgmtv3.ClusterLoggingLister
+	nodeLister           v1.NodeLister
 	projectLoggingLister mgmtv3.ProjectLoggingLister
 	projectLister        mgmtv3.ProjectLister
 	templateLister       mgmtv3.CatalogTemplateLister
@@ -44,6 +51,7 @@ func NewDeployer(cluster *config.UserContext, secretSyncer *configsyncer.SecretM
 		clusterName:          clusterName,
 		clusterLister:        cluster.Management.Management.Clusters(metav1.NamespaceAll).Controller().Lister(),
 		clusterLoggingLister: cluster.Management.Management.ClusterLoggings(clusterName).Controller().Lister(),
+		nodeLister:           cluster.Core.Nodes(metav1.NamespaceAll).Controller().Lister(),
 		projectLoggingLister: cluster.Management.Management.ProjectLoggings(metav1.NamespaceAll).Controller().Lister(),
 		projectLister:        cluster.Management.Management.Projects(metav1.NamespaceAll).Controller().Lister(),
 		templateLister:       cluster.Management.Management.CatalogTemplates(metav1.NamespaceAll).Controller().Lister(),
@@ -57,6 +65,10 @@ func (d *Deployer) ClusterLoggingSync(key string, obj *mgmtv3.ClusterLogging) (r
 }
 
 func (d *Deployer) ProjectLoggingSync(key string, obj *mgmtv3.ProjectLogging) (runtime.Object, error) {
+	return obj, d.sync()
+}
+
+func (d *Deployer) NodeSync(key string, obj *corev1.Node) (runtime.Object, error) {
 	return obj, d.sync()
 }
 
@@ -113,6 +125,13 @@ func (d *Deployer) deployRancherLogging(systemProjectID, appCreator string) erro
 	catalogID := loggingconfig.RancherLoggingCatalogID(template.Spec.DefaultVersion)
 
 	app := rancherLoggingApp(appCreator, systemProjectID, catalogID, driverDir)
+
+	windowsNodes, err := d.nodeLister.List(metav1.NamespaceAll, windowNodeLabel)
+	if err != nil {
+		return errors.Wrapf(err, "failed to list nodes")
+	}
+
+	updateInRancherLoggingAppWindowsConfig(app, len(windowsNodes) != 0)
 
 	return d.appDeployer.deploy(app)
 }

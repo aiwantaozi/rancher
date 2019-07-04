@@ -18,10 +18,12 @@ func Register(ctx context.Context, cluster *config.UserContext) {
 
 	clusterLogging := cluster.Management.Management.ClusterLoggings(clusterName)
 	projectLogging := cluster.Management.Management.ProjectLoggings(metav1.NamespaceAll)
+	node := cluster.Core.Nodes(metav1.NamespaceAll)
 
 	deployer := deployer.NewDeployer(cluster, secretManager)
 	clusterLogging.AddClusterScopedHandler(ctx, "cluster-logging-deployer", cluster.ClusterName, deployer.ClusterLoggingSync)
 	projectLogging.AddClusterScopedHandler(ctx, "project-logging-deployer", cluster.ClusterName, deployer.ProjectLoggingSync)
+	node.AddHandler(ctx, "node-syncer", deployer.NodeSync)
 
 	configSyncer := configsyncer.NewConfigSyncer(cluster, secretManager)
 	clusterLogging.AddClusterScopedHandler(ctx, "cluster-logging-configsyncer", cluster.ClusterName, configSyncer.ClusterLoggingSync)

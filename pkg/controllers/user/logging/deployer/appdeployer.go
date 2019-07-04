@@ -3,6 +3,7 @@ package deployer
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	loggingconfig "github.com/rancher/rancher/pkg/controllers/user/logging/config"
@@ -83,6 +84,15 @@ func (d *AppDeployer) deploy(app *projectv3.App) error {
 		return errors.New("stale app " + app.Namespace + ":" + app.Name + " still on terminating")
 	}
 
+	app.Spec.AppRevisionName = current.Spec.AppRevisionName
+	if !reflect.DeepEqual(current.Spec, app.Spec) {
+		new := current.DeepCopy()
+		new.Spec = app.Spec
+		_, err = d.AppsGetter.Apps(app.Namespace).Update(new)
+		if err != nil {
+			return errors.Wrapf(err, "failed to update app %s", app.Name)
+		}
+	}
 	return nil
 }
 
@@ -134,9 +144,11 @@ func rancherLoggingApp(appCreator, systemProjectID, catalogID, driverDir string)
 		},
 		Spec: projectv3.AppSpec{
 			Answers: map[string]string{
-				"fluentd.enabled":              "true",
-				"log-aggregator.enabled":       "true",
-				"log-aggregator.flexVolumeDir": driverDir,
+				"fluentd.enabled":                             "true",
+				"fluentd.fluentd-linux.enabled":               "true",
+				"log-aggregator.enabled":                      "true",
+				"log-aggregator.log-aggregator-linux.enabled": "true",
+				"log-aggregator.flexVolumeDir":                driverDir,
 			},
 			Description:     "Rancher Logging for collect logs",
 			ExternalID:      catalogID,
@@ -168,5 +180,18 @@ func loggingTesterApp(appCreator, systemProjectID, catalogID, clusterConfig, pro
 			ProjectName:     systemProjectID,
 			TargetNamespace: namepspace,
 		},
+	}
+}
+
+func updateInRancherLoggingAppWindowsConfig(app *projectv3.App, enableWindows bool) {
+	if app.Spec.Answers == nil {
+		app.Spec.Answers = make(map[string]string)
+	}
+	if enableWindows {
+		app.Spec.Answers["fluentd.fluentd-windows.enabled"] = "true"
+		app.Spec.Answers["log-aggregator.log-aggregator-windows.enabled"] = "true"
+	} else {
+		app.Spec.Answers["fluentd.fluentd-windows.enabled"] = "false"
+		app.Spec.Answers["log-aggregator.log-aggregator-windows.enabled"] = "false"
 	}
 }
