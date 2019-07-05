@@ -67,10 +67,12 @@ func (s *ConfigSyncer) NamespaceSync(key string, obj *k8scorev1.Namespace) (runt
 }
 
 func (s *ConfigSyncer) ClusterLoggingSync(key string, obj *mgmtv3.ClusterLogging) (runtime.Object, error) {
-	return obj, s.sync()
+	fmt.Println("---cluster logging sync")
+	return obj, nil
 }
 
 func (s *ConfigSyncer) ProjectLoggingSync(key string, obj *mgmtv3.ProjectLogging) (runtime.Object, error) {
+	fmt.Println("---project logging sync")
 	return obj, s.sync()
 }
 
@@ -82,7 +84,7 @@ func (s *ConfigSyncer) sync() error {
 
 	systemProjectName := project.Name
 	systemProjectID := fmt.Sprintf("%s:%s", project.Namespace, project.Name)
-
+	fmt.Println("----1: finish get system project")
 	isDeployed, err := s.isAppDeploy(systemProjectName)
 	if err != nil {
 		return err
@@ -91,6 +93,7 @@ func (s *ConfigSyncer) sync() error {
 	if !isDeployed {
 		return nil
 	}
+	fmt.Println("----2: app is deploy")
 
 	allClusterLoggings, err := s.clusterLoggingLister.List("", labels.NewSelector())
 	if err != nil {
@@ -105,7 +108,7 @@ func (s *ConfigSyncer) sync() error {
 		}
 		clusterLoggings = append(clusterLoggings, cp)
 	}
-
+	fmt.Println("----3: cluster logging len:", len(clusterLoggings))
 	allProjectLoggings, err := s.projectLoggingLister.List("", labels.NewSelector())
 	if err != nil {
 		return errors.Wrapf(err, "List project logging failed")
@@ -126,15 +129,18 @@ func (s *ConfigSyncer) sync() error {
 	sort.Slice(projectLoggings, func(i, j int) bool {
 		return projectLoggings[i].Name < projectLoggings[j].Name
 	})
+	fmt.Println("----4: project logging len:", len(projectLoggings))
 
 	if err = s.syncSSLCert(clusterLoggings, projectLoggings); err != nil {
 		return err
 	}
 
+	fmt.Println("----5: finish sync ssl cert")
 	if err = s.syncClusterConfig(clusterLoggings, systemProjectID); err != nil {
 		return err
 	}
 
+	fmt.Println("----7:sync project config")
 	return s.syncProjectConfig(projectLoggings, systemProjectID)
 }
 
