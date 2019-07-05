@@ -10,13 +10,14 @@ import (
 )
 
 var (
-	RKEVersion                  string
-	DefaultK8sVersion           string
-	K8sVersionToTemplates       map[string]map[string]string
-	K8sVersionToRKESystemImages map[string]v3.RKESystemImages
-	K8sVersionToServiceOptions  map[string]v3.KubernetesServicesOptions
-	K8sVersionsCurrent          []string
-	K8sBadVersions              = map[string]bool{}
+	RKEVersion                        string
+	DefaultK8sVersion                 string
+	K8sVersionToTemplates             map[string]map[string]string
+	K8sVersionToRKESystemImages       map[string]v3.RKESystemImages
+	K8sVersionToServiceOptions        map[string]v3.KubernetesServicesOptions
+	K8sVersionToWindowsServiceOptions map[string]v3.KubernetesServicesOptions
+	K8sVersionsCurrent                []string
+	K8sBadVersions                    = map[string]bool{}
 )
 
 func InitMetadata(ctx context.Context) error {
@@ -34,6 +35,7 @@ func initAddonTemplates() {
 
 func initServiceOptions() {
 	K8sVersionToServiceOptions = interface{}(rke.DriverData.K8sVersionServiceOptions).(map[string]v3.KubernetesServicesOptions)
+	K8sVersionToWindowsServiceOptions = rke.DriverData.K8sVersionWindowsServiceOptions
 }
 
 func initK8sRKESystemImages() {

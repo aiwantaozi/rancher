@@ -92,6 +92,8 @@ type RKESystemImages struct {
 	// Alpine image
 	Alpine string `yaml:"alpine" json:"alpine,omitempty"`
 	// rke-nginx-proxy image
+	// related windows note: have a manifest support for rke-tools to compatible with windows, references:
+	// - https://github.com/rancher/rke-tools/pull/TODO
 	NginxProxy string `yaml:"nginx_proxy" json:"nginxProxy,omitempty"`
 	// rke-cert-deployer image
 	CertDownloader string `yaml:"cert_downloader" json:"certDownloader,omitempty"`
@@ -110,10 +112,15 @@ type RKESystemImages struct {
 	// CoreDNS autoscaler image
 	CoreDNSAutoscaler string `yaml:"coredns_autoscaler" json:"corednsAutoscaler,omitempty"`
 	// Kubernetes image
+	// related windows note: have a manifest image for kubernetes to be compatible with windows, references:
+	// - https://github.com/rancher/hyperkube/pull/39
 	Kubernetes string `yaml:"kubernetes" json:"kubernetes,omitempty"`
 	// Flannel image
 	Flannel string `yaml:"flannel" json:"flannel,omitempty"`
 	// Flannel CNI image
+	// related windows note: have a manifest image for flannel to be compatible with windows,
+	// but it packages the flanneld and CNI plugins binaries together, references:
+	// - https://github.com/rancher/flannel-cni/pull/3
 	FlannelCNI string `yaml:"flannel_cni" json:"flannelCni,omitempty"`
 	// Calico Node image
 	CalicoNode string `yaml:"calico_node" json:"calicoNode,omitempty"`
@@ -141,6 +148,11 @@ type RKESystemImages struct {
 	IngressBackend string `yaml:"ingress_backend" json:"ingressBackend,omitempty"`
 	// Metrics Server image
 	MetricsServer string `yaml:"metrics_server" json:"metricsServer,omitempty"`
+	// Pod infra container image for Windows
+	// related windows note: there is still not a manifest image for pause container, need a field to indicate, references:
+	// - https://github.com/kubernetes/kubernetes/pull/75618
+	// - https://github.com/rancher/kubernetes-windows-dockerfiles/pull/11
+	WindowsPodInfraContainer string `yaml:"windows_pod_infra_container" json:"podInfraWindowsContainer,omitempty"`
 }
 
 type RKEConfigNode struct {
@@ -196,14 +208,6 @@ type RKEAddon struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Template string `yaml:"template" json:"template,omitempty"`
-}
-
-type RKEK8sWindowsSystemImage struct {
-	types.Namespaced
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	SystemImages WindowsSystemImages `yaml:"windows_system_images" json:"windowsSystemImages,omitempty"`
 }
 
 type K8sVersionInfo struct {

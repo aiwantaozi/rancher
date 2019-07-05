@@ -1,0 +1,5 @@
+package: github.com/rancher/kontainer-driver-data
+import:
+- package: github.com/rancher/types
+  version: windows_refactor
+  repo: https://github.com/thxcode/rancher-types

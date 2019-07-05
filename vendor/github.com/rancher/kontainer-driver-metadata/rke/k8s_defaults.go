@@ -35,7 +35,7 @@ type Data struct {
 	//Default K8s version for every rke version
 	RKEDefaultK8sVersions map[string]string
 
-	K8sVersionWindowsSystemImages   map[string]v3.WindowsSystemImages
+	// K8sVersionWindowsServiceOptions - service options per windows k8s version
 	K8sVersionWindowsServiceOptions map[string]v3.KubernetesServicesOptions
 }
 
@@ -71,7 +71,6 @@ func init() {
 	}
 
 	// init Windows versions
-	DriverData.K8sVersionWindowsSystemImages = loadK8sVersionWindowsSystemimages()
 	DriverData.K8sVersionWindowsServiceOptions = loadK8sVersionWindowsServiceOptions()
 
 	DriverData.RancherDefaultK8sVersions = loadRancherDefaultK8sVersions()
