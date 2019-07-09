@@ -1,5 +1,4 @@
-#Requires -Version 5.0
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
 
 Invoke-Expression -Command "$PSScriptRoot\version.ps1"
 

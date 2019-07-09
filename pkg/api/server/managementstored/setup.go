@@ -119,7 +119,6 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 		client.RKEK8sSystemImageType,
 		client.RKEK8sServiceOptionType,
 		client.RKEAddonType,
-		client.RKEK8sWindowsSystemImageType,
 		client.RoleTemplateType,
 		client.SettingType,
 		client.TemplateType,

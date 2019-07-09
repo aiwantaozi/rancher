@@ -1,5 +1,4 @@
-#Requires -Version 5.0
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
 
 $DIRTY = ""
 if ("$(git status --porcelain --untracked-files=no)") {
