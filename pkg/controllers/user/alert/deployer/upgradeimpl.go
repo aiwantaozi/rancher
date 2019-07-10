@@ -46,6 +46,7 @@ type AlertService struct {
 	projectAlertRules  v3.ProjectAlertRuleInterface
 	projectLister      v3.ProjectLister
 	namespaces         v1.NamespaceInterface
+	templateLister     v3.CatalogTemplateLister
 	appDeployer        *appDeployer
 }
 
@@ -73,6 +74,7 @@ func (l *AlertService) Init(cluster *config.UserContext) {
 	l.projectLister = cluster.Management.Management.Projects(cluster.ClusterName).Controller().Lister()
 	l.apps = cluster.Management.Project.Apps(metav1.NamespaceAll)
 	l.namespaces = cluster.Core.Namespaces(metav1.NamespaceAll)
+	l.templateLister = cluster.Management.Management.CatalogTemplates(metav1.NamespaceAll).Controller().Lister()
 	l.appDeployer = ad
 
 }
@@ -87,14 +89,19 @@ func (l *AlertService) Version() (string, error) {
 }
 
 func (l *AlertService) Upgrade(currentVersion string) (string, error) {
-	newCatalogID := settings.SystemMonitoringCatalogID.Get()
-
-	NewVersion, _, err := common.ParseExternalID(newCatalogID)
+	templateVersionNamespace, systemCatalogName, templateName, _, _, err := common.SplitExternalID(settings.SystemMonitoringCatalogID.Get())
 	if err != nil {
 		return "", err
 	}
 
-	_, systemCatalogName, _, _, _, err := common.SplitExternalID(newCatalogID)
+	templateID := fmt.Sprintf("%s-%s", systemCatalogName, templateName)
+	template, err := l.templateLister.Get(templateVersionNamespace, templateID)
+	if err != nil {
+		return "", errors.Wrapf(err, "get template %s failed", templateID)
+	}
+	newExternalID := fmt.Sprintf("catalog://?catalog=%s&template=%s&version=%s", systemCatalogName, templateName, template.Spec.DefaultVersion)
+
+	newVersion, _, err := common.ParseExternalID(newExternalID)
 	if err != nil {
 		return "", err
 	}
@@ -132,12 +139,12 @@ func (l *AlertService) Upgrade(currentVersion string) (string, error) {
 	app, err := l.apps.GetNamespaced(systemProject.Name, appName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return NewVersion, nil
+			return newVersion, nil
 		}
 		return "", fmt.Errorf("get app %s:%s failed, %v", systemProject.Name, appName, err)
 	}
 	newApp := app.DeepCopy()
-	newApp.Spec.ExternalID = newCatalogID
+	newApp.Spec.ExternalID = newExternalID
 	newApp.Spec.Answers["operator.enabled"] = "false"
 
 	if !reflect.DeepEqual(newApp, app) {
@@ -166,7 +173,7 @@ func (l *AlertService) Upgrade(currentVersion string) (string, error) {
 			return "", fmt.Errorf("update app %s:%s failed, %v", app.Namespace, app.Name, err)
 		}
 	}
-	return NewVersion, nil
+	return newVersion, nil
 }
 
 func (l *AlertService) migrateLegacyClusterAlert() error {
