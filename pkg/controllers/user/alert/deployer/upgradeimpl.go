@@ -89,7 +89,7 @@ func (l *AlertService) Version() (string, error) {
 }
 
 func (l *AlertService) Upgrade(currentVersion string) (string, error) {
-	templateVersionNamespace, systemCatalogName, templateName, _, _, err := common.SplitExternalID(settings.SystemMonitoringCatalogID.Get())
+	templateVersionNamespace, systemCatalogName, _, templateName, _, err := common.SplitExternalID(settings.SystemMonitoringCatalogID.Get())
 	if err != nil {
 		return "", err
 	}
@@ -165,9 +165,6 @@ func (l *AlertService) Upgrade(currentVersion string) (string, error) {
 		if !v3.CatalogConditionUpgraded.IsTrue(systemCatalog) || !v3.CatalogConditionRefreshed.IsTrue(systemCatalog) || !v3.CatalogConditionDiskCached.IsTrue(systemCatalog) {
 			return "", fmt.Errorf("catalog %v not ready", systemCatalogName)
 		}
-
-		// wait for catalog syncing to latest version
-		time.Sleep(waitCatalogSyncInterval)
 
 		if _, err = l.apps.Update(newApp); err != nil {
 			return "", fmt.Errorf("update app %s:%s failed, %v", app.Namespace, app.Name, err)

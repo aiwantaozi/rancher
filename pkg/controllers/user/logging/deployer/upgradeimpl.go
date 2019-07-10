@@ -139,9 +139,6 @@ func (l *LoggingService) Upgrade(currentVersion string) (string, error) {
 	newApp.Spec.ExternalID = newCatalogID
 
 	if !reflect.DeepEqual(newApp, app) {
-		// wait for catalog syncing to latest version
-		time.Sleep(waitCatalogSyncInterval)
-
 		if _, err = l.appDeployer.AppsGetter.Apps(metav1.NamespaceAll).Update(newApp); err != nil {
 			return "", errors.Wrapf(err, "update app %s:%s failed", app.Namespace, app.Name)
 		}
