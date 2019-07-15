@@ -168,6 +168,29 @@ function Get-Address
     return $Addr
 }
 
+function ConvertTo-JsonObj
+{
+    param (
+        [parameter(Mandatory = $false, ValueFromPipeline = $true)] [string]$JSON
+    )
+
+    if (-not $JSON) {
+        return $null
+    }
+
+    try {
+        $ret = @{}
+        $jsonConfig = $JSON | ConvertFrom-Json -ErrorAction Ignore -WarningAction Ignore
+        $jsonConfig.PSObject.Properties | ForEach-Object {
+            $item = $_
+            $ret[$item.Name] = $item.Value
+        }
+        return $ret
+    } catch {
+        return $null
+    }
+}
+
 # required envs
 Set-Env -Key "DOCKER_HOST" -Value "npipe:////./pipe/docker_engine"
 Set-Env -Key "CATTLE_ROLE" -Value "worker"
@@ -241,7 +264,9 @@ for ($i = $args.Length; $i -ge 0; $i--)
             $vals = $null
         }
         '(-l|--label)' {
-            $CATTLE_NODE_LABEL = $vals
+            if ($vals) {
+                $CATTLE_NODE_LABEL += $vals
+            }
             $vals = $null
         }
         '(-o|--only-write-certs)' {
@@ -274,21 +299,22 @@ if ($CATTLE_CLUSTER -ne "true")
 if ((-not $CATTLE_NODE_NAME) -or (-not $CATTLE_ADDRESS))
 {
     $getAdapterJson = wins.exe cli net get-adapter
-    if (-not $?) {
-        Log-Fatal "Could not get host network metadata"
-    }
-    $defaultNetwork = $getAdapterJson | ConvertFrom-Json
-    if (-not $defaultNetwork) {
-        Log-Fatal "Could not get host network metadata"
-    }
+    if ($?) {
+        $defaultNetwork = $getAdapterJson | ConvertFrom-Json
+        if ($defaultNetwork) {
+            if (-not $CATTLE_NODE_NAME) {
+                $CATTLE_NODE_NAME = $defaultNetwork.HostName
+                $CATTLE_NODE_NAME = $CATTLE_NODE_NAME.ToLower()
+            }
 
-    if (-not $CATTLE_NODE_NAME) {
-        $CATTLE_NODE_NAME = $defaultNetwork.HostName
-        $CATTLE_NODE_NAME = $CATTLE_NODE_NAME.ToLower()
-    }
-
-    if (-not $CATTLE_ADDRESS) {
-        $CATTLE_ADDRESS = $defaultNetwork.AddressCIDR -replace "/32",""
+            if (-not $CATTLE_ADDRESS) {
+                $CATTLE_ADDRESS = $defaultNetwork.AddressCIDR -replace "/32",""
+            }
+        } else {
+            Log-Warn "Could not convert '$getAdapterJson' to json object"
+        }
+    } else {
+        Log-Warn "Could not get host network metadata: $getAdapterJson"
     }
 }
 
@@ -369,14 +395,25 @@ if ($CATTLE_CA_CHECKSUM)
 }
 
 # add labels
-Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\' -ErrorAction Ignore | ForEach-Object {
-    $versionTag = "$($windowsCurrentVersion.CurrentMajorVersionNumber).$($windowsCurrentVersion.CurrentMinorVersionNumber).$($windowsCurrentVersion.CurrentBuildNumber).$($windowsCurrentVersion.UBR)"
-    $CATTLE_NODE_LABEL += @("rke.cattle.io/windows-version=$versionTag")
-    $CATTLE_NODE_LABEL += @("rke.cattle.io/windows-release-id=$($windowsCurrentVersion.ReleaseId)")
-    $CATTLE_NODE_LABEL += @("rke.cattle.io/windows-major-version=$($windowsCurrentVersion.CurrentMajorVersionNumber)")
-    $CATTLE_NODE_LABEL += @("rke.cattle.io/windows-minor-version=$($windowsCurrentVersion.CurrentMinorVersionNumber)")
-    $CATTLE_NODE_LABEL += @("rke.cattle.io/windows-kernel-version=$($windowsCurrentVersion.BuildLabEx)")
-    $CATTLE_NODE_LABEL += @("rke.cattle.io/windows-build=$($windowsCurrentVersion.CurrentBuild)")
+$getVersionJson = wins.exe cli host get-version
+if ($?)
+{
+    $windowsCurrentVersion = $getVersionJson | ConvertTo-JsonObj
+    if ($windowsCurrentVersion) {
+        $versionTag = "$($windowsCurrentVersion.CurrentMajorVersionNumber).$($windowsCurrentVersion.CurrentMinorVersionNumber).$($windowsCurrentVersion.CurrentBuildNumber).$($windowsCurrentVersion.UBR)"
+        $CATTLE_NODE_LABEL += @("rke.cattle.io/windows-version=$versionTag")
+        $CATTLE_NODE_LABEL += @("rke.cattle.io/windows-release-id=$($windowsCurrentVersion.ReleaseId)")
+        $CATTLE_NODE_LABEL += @("rke.cattle.io/windows-major-version=$($windowsCurrentVersion.CurrentMajorVersionNumber)")
+        $CATTLE_NODE_LABEL += @("rke.cattle.io/windows-minor-version=$($windowsCurrentVersion.CurrentMinorVersionNumber)")
+        $CATTLE_NODE_LABEL += @("rke.cattle.io/windows-kernel-version=$($windowsCurrentVersion.BuildLabEx)")
+        $CATTLE_NODE_LABEL += @("rke.cattle.io/windows-build=$($windowsCurrentVersion.CurrentBuild)")
+    } else {
+        Log-Warn "Could not convert Windows Current Version JSON '$getVersionJson' to object"
+    }
+}
+else
+{
+    Log-Warn "Could not get host version: $getVersionJson"
 }
 
 # set environment variables
